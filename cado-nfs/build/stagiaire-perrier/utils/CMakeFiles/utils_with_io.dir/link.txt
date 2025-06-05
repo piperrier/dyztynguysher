@@ -1,0 +1,2 @@
+/usr/bin/ar qc libutils_with_io.a CMakeFiles/utils_with_io.dir/filter_io.cpp.o
+/usr/bin/ranlib libutils_with_io.a

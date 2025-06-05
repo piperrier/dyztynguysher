@@ -1,0 +1,1 @@
+/home/pperrier/Documents/block_wiedemann/cado-nfs/build/stagiaire-perrier/ccwrap.pl -std=c99 -W -Wall -O2  -msse3 -mssse3 -msse4.1 -mpopcnt -mavx -mpclmul -mavx2 -fopenmp CMakeFiles/omp_get_max_threads.dir/omp_get_max_threads.c.o -o omp_get_max_threads   -L/usr/local/lib  -Wl,-rpath,/usr/local/lib /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

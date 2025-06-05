@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmatmul_p12_zone.a CMakeFiles/matmul_p12_zone.dir/matmul_facade.cpp.o "CMakeFiles/matmul_p12_zone.dir/matmul-zone.cpp.o"
+/usr/bin/ranlib libmatmul_p12_zone.a

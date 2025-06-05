@@ -1,0 +1,25 @@
+
+# Consider dependencies only in project.
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY OFF)
+
+# The set of languages for which implicit dependencies are needed:
+set(CMAKE_DEPENDS_LANGUAGES
+  )
+
+# The set of dependency files which are needed:
+set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/pperrier/Documents/block_wiedemann/cado-nfs/sieve/las-sieve2357.cpp" "tests/sieve/CMakeFiles/test-sieve2357.dir/__/__/sieve/las-sieve2357.cpp.o" "gcc" "tests/sieve/CMakeFiles/test-sieve2357.dir/__/__/sieve/las-sieve2357.cpp.o.d"
+  "/home/pperrier/Documents/block_wiedemann/cado-nfs/sieve/las-where-am-i-prod.cpp" "tests/sieve/CMakeFiles/test-sieve2357.dir/__/__/sieve/las-where-am-i-prod.cpp.o" "gcc" "tests/sieve/CMakeFiles/test-sieve2357.dir/__/__/sieve/las-where-am-i-prod.cpp.o.d"
+  "/home/pperrier/Documents/block_wiedemann/cado-nfs/tests/sieve/test-sieve2357.cpp" "tests/sieve/CMakeFiles/test-sieve2357.dir/test-sieve2357.cpp.o" "gcc" "tests/sieve/CMakeFiles/test-sieve2357.dir/test-sieve2357.cpp.o.d"
+  )
+
+# Targets to which this target links which contain Fortran sources.
+set(CMAKE_Fortran_TARGET_LINKED_INFO_FILES
+  )
+
+# Targets to which this target links which contain Fortran sources.
+set(CMAKE_Fortran_TARGET_FORWARD_LINKED_INFO_FILES
+  )
+
+# Fortran module output directory.
+set(CMAKE_Fortran_TARGET_MODULE_DIR "")

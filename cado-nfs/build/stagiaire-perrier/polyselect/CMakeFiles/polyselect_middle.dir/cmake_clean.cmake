@@ -1,0 +1,41 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/polyselect_middle.dir/polyselect_arith.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_arith.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_collisions.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_collisions.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_data_series.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_data_series.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_main_data.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_main_data.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_main_queue.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_main_queue.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_match.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_match.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_poly_header.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_poly_header.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_primes_table.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_primes_table.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_priority_queue.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_priority_queue.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_proots.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_proots.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_qroots.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_qroots.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_shash.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_shash.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_special_q.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_special_q.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_stats.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_stats.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread_league.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread_league.c.o.d"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread_team.c.o"
+  "CMakeFiles/polyselect_middle.dir/polyselect_thread_team.c.o.d"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang C)
+  include(CMakeFiles/polyselect_middle.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

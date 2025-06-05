@@ -1,0 +1,2 @@
+/usr/bin/ar qc libbwc_arith.a "CMakeFiles/bwc_arith.dir/arith-generic.cpp.o"
+/usr/bin/ranlib libbwc_arith.a

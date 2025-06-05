@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmatmul_b64_basic.a CMakeFiles/matmul_b64_basic.dir/matmul_facade.cpp.o "CMakeFiles/matmul_b64_basic.dir/matmul-basic.cpp.o"
+/usr/bin/ranlib libmatmul_b64_basic.a

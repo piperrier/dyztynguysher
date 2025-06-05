@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmatmul_b256_bucket.a CMakeFiles/matmul_b256_bucket.dir/matmul_facade.cpp.o "CMakeFiles/matmul_b256_bucket.dir/matmul-bucket.cpp.o"
+/usr/bin/ranlib libmatmul_b256_bucket.a

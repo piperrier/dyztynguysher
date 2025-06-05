@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmatmul_b64_sliced.a CMakeFiles/matmul_b64_sliced.dir/matmul_facade.cpp.o "CMakeFiles/matmul_b64_sliced.dir/matmul-sliced.cpp.o"
+/usr/bin/ranlib libmatmul_b64_sliced.a

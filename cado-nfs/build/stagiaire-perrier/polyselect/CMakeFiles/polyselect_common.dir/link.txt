@@ -1,0 +1,2 @@
+/usr/bin/ar qc libpolyselect_common.a CMakeFiles/polyselect_common.dir/auxiliary.c.o CMakeFiles/polyselect_common.dir/murphyE.c.o CMakeFiles/polyselect_common.dir/area.c.o CMakeFiles/polyselect_common.dir/size_optimization.c.o CMakeFiles/polyselect_common.dir/polyselect_alpha.c.o CMakeFiles/polyselect_common.dir/polyselect_norms.c.o
+/usr/bin/ranlib libpolyselect_common.a

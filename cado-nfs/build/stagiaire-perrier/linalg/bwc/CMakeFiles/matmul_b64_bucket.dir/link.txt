@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmatmul_b64_bucket.a CMakeFiles/matmul_b64_bucket.dir/matmul_facade.cpp.o "CMakeFiles/matmul_b64_bucket.dir/matmul-bucket.cpp.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-small1.S.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-small2.S.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-large-fbi.S.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-large-fbd.S.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-vsc-combine.S.o" "CMakeFiles/matmul_b64_bucket.dir/matmul-sub-vsc-dispatch.S.o"
+/usr/bin/ranlib libmatmul_b64_bucket.a
