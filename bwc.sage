@@ -32,8 +32,8 @@ class Instance:
             n_code(int): size of the code.
             k_code(int): dimension of the code.
             r(int): compute betti_r_r+1
-            m,n(str): a multiple of 64 declared as an str, the m and n of block wiedemann, eg m = "128" and n ="64", i our case we will take m>>n (best for left kernel)
-            threads(str): nuber of threads you use, if tour machine has 12 threads, threads = "3x4"
+            m,n(str): a multiple of 64 declared as an str, the m and n of block wiedemann, eg m = "128" and n ="64"
+            threads(str): number of threads you use, if your machine has 12 threads, threads = "3x4"
         """
 
         # code parameters
@@ -75,7 +75,12 @@ class Instance:
             P.show(dpi=dpi, axes_pad=0,fontsize=3)
             # P.show(dpi=dpi)
         else : print("S not defined")
+
     
+#################################
+### Code related
+#################################
+
 
     def set_code_matrix(self, matrix):
         self.code_matrix = matrix
@@ -91,6 +96,21 @@ class Instance:
         else :
             self.S = Betti(self.code_matrix, self.r)
 
+
+    def size(self, r_min=None, r_max=None):
+        if r_min == r_max == None :
+            r_min = self.r
+            r_max = self.r+1
+        for r in range(r_min, r_max):
+            nrows = binomial(self.k_code,r+1) * self.r + binomial(self.k_code,r) * r # dim of cokernel
+            ncols = self.n_code * binomial(self.k_code,r-1) # dim of arrival space
+            print(f"b{r}_{r+1}: {nrows} x {ncols}")
+        
+#################################
+### In, out and conv between formats
+#################################
+
+
     def S_to_sage(self):
         if self.S == None:
             print("S not defined")
@@ -102,7 +122,8 @@ class Instance:
                     S_dense[index,coeff] = 1
             return S_dense
 
-    def dense_to_sparse(self,dense_mat):
+            
+    def sage_to_sparse(self,dense_mat):
         sparse_mat= []
         i=0
         for dense_row in dense_mat:
@@ -129,6 +150,7 @@ class Instance:
                 # Write each column index as a 32-bit little-endian integer
                     for col in row:
                         f.write(struct.pack('<I', col))
+
 
     def S_from_bin(self):
         print("\nReading the system matrix S from a bin")
@@ -160,10 +182,11 @@ class Instance:
         except FileNotFoundError:
             print("No file found: " + filename + " doesn't exist !")
 
-    def S_dense_from_bin(self):
+
+    def S_sage_from_bin(self):
         filename = self.instance_dir + "/S.bin"
      
-        S_dense = zero_matrix(GF(2),self.nrows,self.ncols)
+        S_sage = zero_matrix(GF(2),self.nrows,self.ncols, sparse=True)
         
         try:
             with open(filename, 'rb') as f:
@@ -179,12 +202,12 @@ class Instance:
                     for _ in range(num_entries):
                         col_bytes = f.read(4)
                         col_index = struct.unpack('<I', col_bytes)[0]
-                        S_dense[row_index,col_index] = 1
+                        S_sage[row_index,col_index] = 1
 
                     # Add the row to the matrix
                     row_index+=1
                 # print("here")
-                return S_dense
+                return S_sage
 
         except FileNotFoundError:
             print("No file found: " + filename + " doesn't exist !")
@@ -242,6 +265,11 @@ class Instance:
             print("No file found: " + filename + " doesn't exist !")
         
 
+#################################
+### Verifications
+#################################
+
+    
     def check_solution(self):
         S_dense = self.S_to_sage()
         if self.ker != None:
@@ -250,10 +278,13 @@ class Instance:
                 if vector(self.ker[:self.nrows,i_vec])*S_dense != 0 :
                     res = False
             print(f"### Check solution ###\ntest is {res}\n")
-            return res
-        
+            return res    
 
-    
+
+#################################
+### Calls to CADO-NFS
+#################################
+
     def scan(self):
         subprocess.run("mf_scan2 " + self.path + "/S.bin", shell=True)
 
@@ -292,6 +323,7 @@ class Instance:
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
+
     def retrieve_zero_solution(self):
         print("### Retrieving zero solution")
         pattern = re.compile(r'zeroK\..*')
@@ -304,7 +336,6 @@ class Instance:
         if not found:
                 print(f"{bcolors.OKBLUE}No zero file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
-
     
     def run(self):
         self.scan()
@@ -316,6 +347,11 @@ class Instance:
         
         self.clear_idir()
         Instance.clear_wdir()
+        
+
+#################################
+### Cleaning
+#################################
 
 
     def clear_wdir():
@@ -334,7 +370,7 @@ class Instance:
 
 
 #################################
-# TEST
+### TEST
 #################################
 
 
@@ -509,4 +545,4 @@ def test_1():
 # i = hamming_4()
 bklc = bklc_5()
 test = test_1()
-# i = goppa_2_8_6_s18()
+goppa = goppa_2_8_6_s18()
