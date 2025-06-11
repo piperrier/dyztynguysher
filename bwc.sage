@@ -210,7 +210,7 @@ class Instance:
     def retrieve_solution(self, solution_file):
         print(f"{bcolors.BOLD}### Retrieving solution{bcolors.ENDC}")
         if os.path.exists("/tmp/wdir/W"):
-            shutil.copy("/tmp/wdir/W", self.path + "/" + solution_file)
+            shutil.copy("/tmp/wdir/W", self.path + "/" + solution_file + ".bin")
             print(f"{bcolors.OKGREEN}Solution retrieved and placed in {self.instance_dir}{bcolors.ENDC}")
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
@@ -230,8 +230,9 @@ class Instance:
         self.balancing(matrix_file)
         self.bwc(matrix_file)
         self.retrieve_solution(solution_file)
-        # self.retrieve_zero_solution()
-        # self.read_solution()
+        
+        # nrows_sol = ceil(float(max(nrows,ncols))/64)*64
+        # solution_from_bin(self.path, solution_file, nrows_sol, 64)
         
         self.clear_idir()
         Instance.clear_wdir()
@@ -248,13 +249,18 @@ class Instance:
 
     def clear_idir(self):
         #clear everithing except S* and W*
-        matrix_re = re.compile(r'^S.*')
-        solution_re = re.compile(r'^W.*')
+        # matrix_re = re.compile(r'^S.*')
+        # solution_re = re.compile(r'^W.*')
+        point_bin = re.compile(r'^[^.]*\.bin$')
+        # enum = [x.value for x in list(ConditioningType)]
+
+        
         for filename in os.listdir(self.instance_dir + "/"):
             file_path = os.path.join(self.instance_dir + "/", filename)
 
             # if os.path.isfile(file_path) and filename not in {"S.bin", "W"} and not pattern.match(filename) :
-            if os.path.isfile(file_path) and not matrix_re.match(filename) and not solution_re.match(filename) :
+            # if os.path.isfile(file_path) and not matrix_re.match(filename) and not solution_re.match(filename) :
+            if os.path.isfile(file_path) and not point_bin.match(filename) :
                 os.remove(file_path)
 
 
@@ -291,7 +297,7 @@ def hamming_4():
     return i
 
 def bklc_5():
-    i = Instance("bklc",47,17,5, "512", "512", "2x2")
+    i = Instance("bklc",47,17,5, "2048", "64", "2x2")
     G = Matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],

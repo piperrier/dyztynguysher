@@ -91,7 +91,7 @@ def sage_from_bin(path, matrix_name, nrows, ncols):
 def solution_from_bin(path, solution_name, nrows, ncols):
     print(f"{bcolors.BOLD}### Reading solutions {soltion_name}{bcolors.ENDC}")
     # W is the result file outputed by CADO NFS
-    filename = path + "/" + solution_name
+    filename = path + "/" + solution_name + ".bin"
 
     try:
         with open(filename, 'rb') as f:
