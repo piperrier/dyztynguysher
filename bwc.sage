@@ -98,6 +98,8 @@ class Instance:
         return (matrix_name, solution_name)     
 
     
+
+
 #################################
 ### Code related
 #################################
@@ -138,21 +140,24 @@ class Instance:
 
     def raw(self):
         print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
-        return (self.Sraw, self.nrows, self.ncols)
+        weight, dst = density(self.Sraw, self.nrows, self.ncols)
+        print(f"rows x cols: {self.nrows} x {self.ncols}\nweight:{weight}\ndensity:{dst:.3f}%")
+        return (copy(self.Sraw), self.nrows, self.ncols)
 
 
     def block1(self):
         print(f"{bcolors.BOLD}### Block conditioning{bcolors.ENDC}")
         row_pad =  ceil(float(self.nrows)/64)*64 - self.nrows
         print(f"Padding {row_pad} rows")
-        matrix = self.Sraw
+        matrix = copy(self.Sraw)
         for j in range(row_pad-1):
             matrix.append([self.ncols + j,self.ncols + ZZ.random_element(j+1,row_pad)])
         matrix.append([self.ncols + row_pad-1])
         
         matrix_nrows = self.nrows + row_pad
         matrix_ncols = self.ncols + row_pad
-        print(matrix_nrows, matrix_ncols)
+        weight, dst = density(matrix, matrix_nrows, matrix_ncols)
+        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%")
         return (matrix, matrix_nrows, matrix_ncols)
 
         
@@ -284,7 +289,7 @@ def hamming_3():
 
 
 def hamming_4():
-    i = Instance("hamming", 15, 11, 5, "64", "128", "2x2")
+    i = Instance("hamming", 15, 11, 5, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
 
@@ -292,12 +297,12 @@ def hamming_4():
     i.set_code_matrix(G)
     i.construct_matrix()
     matrix_to_bin(i.path,"Sraw",i.Sraw)
-    # i.Sraw = i.matrix_from_bin("Sraw")
+    i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
 
 def bklc_5():
-    i = Instance("bklc",47,17,5, "2048", "64", "2x2")
+    i = Instance("bklc",47,17,5, "512", "128", "2x2")
     G = Matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
@@ -317,7 +322,7 @@ def bklc_5():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
     
-    i.set_code_matrix(G)
+    # i.set_code_matrix(G)
     # i.construct_matrix()
     # matrix_to_bin(i.path,"Sraw",i.Sraw)
     i.Sraw = matrix_from_bin(i.path, "Sraw")
@@ -352,7 +357,7 @@ def bklc_4():
     return i
 
 def goppa_2_8_6_s18():
-    i = Instance("goppa_2_8_6", 238, 30, 3, "128", "128", "2x2" )
+    i = Instance("goppa_2_8_6", 238, 30, 3, "1024", "128", "4x3" )
     G = Matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1],
@@ -385,9 +390,10 @@ def goppa_2_8_6_s18():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1]])
     
-    # i.set_code_matrix(G)
-    # i.construct_S()
-    #i.S_to_bin()
+    i.set_code_matrix(G)
+    # i.construct_matrix()
+    # matrix_to_bin(i.path,"Sraw",i.Sraw)
+    i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
     
@@ -440,7 +446,7 @@ def test_1():
     return i
 
 # h4 = hamming_4()
-bklc = bklc_5()
+# bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
-# goppa = goppa_2_8_6_s18()
+goppa = goppa_2_8_6_s18()

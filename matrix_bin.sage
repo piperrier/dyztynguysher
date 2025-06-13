@@ -140,4 +140,8 @@ def solution_from_bin(path, solution_name, nrows, ncols):
 
     #     except FileNotFoundError:
     #         print("No file found: " + filename + " doesn't exist !")
-        
+
+def density(matrix, nrows, ncols):
+        weight = len(flatten(matrix))
+        dst = float(weight)/(nrows*ncols)*100
+        return weight, dst

@@ -36,7 +36,7 @@ def index_of_combination(combinaison, n):
 def construct_S(n,k,r,G,W):
     nrows_S = binomial(k,r+1) * r + binomial(k,r) * r
     ncols_S = W.dimension() * binomial(k,r-1)
-    print("\n### Construction of the system matrix S ###")
+    print(f"{bcolors.BOLD}### Construction of the system matrix{bcolors.ENDC}")
     print(f"S dimensions: {nrows_S} x {ncols_S}")
     print("dim coker", (k * binomial(k,r)) - binomial(k,r+1))
     print("no repetition", binomial(k,r+1) * r)
