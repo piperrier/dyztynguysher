@@ -23,11 +23,13 @@ class bcolors:
 
 
 load("koszul.sage")
+load("goppa.sage")
 load("matrix_bin.sage")
 
 class ConditioningType(Enum):
     RAW = 'raw'
     BLOCK1 = 'block1'
+    RANDOMPAD= 'randompad'
 
 
 class Instance:
@@ -71,6 +73,7 @@ class Instance:
         self.conditioning_functions = {
             ConditioningType.RAW: self.raw,
             ConditioningType.BLOCK1: self.block1,
+            ConditioningType.RANDOMPAD: self.randompad,
         }
         
         if not os.path.exists(self.path):
@@ -140,8 +143,9 @@ class Instance:
 
     def raw(self):
         print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
-        weight, dst = density(self.Sraw, self.nrows, self.ncols)
-        print(f"rows x cols: {self.nrows} x {self.ncols}\nweight:{weight}\ndensity:{dst:.3f}%")
+        weight, dst, row_dst = density(self.Sraw, self.nrows, self.ncols)
+        print(f"rows x cols: {self.nrows} x {self.ncols}")
+        density_pretty(weight, dst, row_dst)
         return (copy(self.Sraw), self.nrows, self.ncols)
 
 
@@ -150,14 +154,39 @@ class Instance:
         row_pad =  ceil(float(self.nrows)/64)*64 - self.nrows
         print(f"Padding {row_pad} rows")
         matrix = copy(self.Sraw)
+
         for j in range(row_pad-1):
             matrix.append([self.ncols + j,self.ncols + ZZ.random_element(j+1,row_pad)])
         matrix.append([self.ncols + row_pad-1])
         
         matrix_nrows = self.nrows + row_pad
         matrix_ncols = self.ncols + row_pad
-        weight, dst = density(matrix, matrix_nrows, matrix_ncols)
-        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%")
+        weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
+        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%\nrow density:{row_dst:.3f}%")
+        return (matrix, matrix_nrows, matrix_ncols)
+
+
+    # FIXME assert
+    def randompad(self, row_weight=150):
+        print(f"{bcolors.BOLD}### Random row pad conditioning{bcolors.ENDC}")
+        
+        row_pad =  self.ncols - self.nrows
+        assert row_pad >=0 
+        print(f"Padding {row_pad} rows with {row_weight} elements")
+        matrix = copy(self.Sraw)
+
+        for j in range(row_pad):
+            row = set()
+            while len(row) != row_weight:
+                # python sets are ordered
+                row.add(ZZ.random_element(self.ncols))
+            matrix.append(row)
+            
+        matrix_nrows = self.nrows + row_pad
+        matrix_ncols = self.ncols
+        weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
+        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}")
+        density_pretty(weight, dst, row_dst)
         return (matrix, matrix_nrows, matrix_ncols)
 
         
@@ -165,17 +194,38 @@ class Instance:
 ### Verifications
 #################################
 
-    
-    # def check_solution(self):
-    #     S_dense = self.S_to_sage()
-    #     if self.ker != None:
-    #         res = True
-    #         for i_vec in range(self.ker.ncols()):
-    #             if vector(self.ker[:self.nrows,i_vec])*S_dense != 0 :
-    #                 res = False
-    #         print(f"### Check solution ###\ntest is {res}\n")
-    #         return res    
+    # TODO: improve checking with all() and any()
+    # FIXME self.nrows == nrows might be buggy
+    def check_solution(self, conditioning=ConditioningType.RAW):
+        print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
+        _, solution_file = self.get_files_names(conditioning)
+        _, nrows, ncols = self.conditioning_functions[conditioning]()
 
+        # print(self.path + "/" + solution_file)
+        
+        if os.path.exists(self.path + "/" + solution_file + ".bin"):
+            # ker is a sage matrix
+            ker = solution_from_bin(self.path, solution_file, nrows, ncols)
+
+            solution = False
+
+            # for c in ker.columns():
+            #     relevant = (c[:self.nrows] != 0)
+            #     irrelevant = (c[self.nrows:nrows] == 0)
+            #     if relevant and irrelevant:
+            #         solution = True
+
+            relevant = vector([any(c) for c in ker[:self.nrows,:].columns()])
+            irrelevant = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
+
+            print(relevant.pairwise_product(irrelevant))
+            solution = any(relevant.pairwise_product(irrelevant))
+            
+            
+            print(solution)
+            return ker
+
+        
 
 #################################
 ### Calls to CADO-NFS
@@ -199,8 +249,6 @@ class Instance:
         threads = (self.thr).split('x')
         thr = ''.join(threads)
 
-        # mn=" + self.mn + "                          \
-        # nullspace = left or RIGHT
         subprocess.run("mkdir -p /tmp/wdir;         \
         bwc.pl :complete                            \
         wdir=/tmp/wdir                              \
@@ -220,15 +268,19 @@ class Instance:
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
-
+    # TODO: - **kwargs
+    #       - conditioning
     def run(self, conditioning=ConditioningType.RAW):
         matrix_file, solution_file = self.get_files_names(conditioning)
 
         # build the matrix of the system if it does not exist
-        if not os.path.isfile(self.path + "/" + matrix_file):
-            print(self.conditioning_functions[conditioning])
-            matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-            matrix_to_bin(self.path, matrix_file, matrix)
+        # if not os.path.isfile(self.path + "/" + matrix_file):
+            # print(self.conditioning_functions[conditioning])
+            # matrix, nrows, ncols = self.conditioning_functions[conditioning]()
+            # matrix_to_bin(self.path, matrix_file, matrix)
+        print(self.conditioning_functions[conditioning])
+        matrix, nrows, ncols = self.conditioning_functions[conditioning]()
+        matrix_to_bin(self.path, matrix_file, matrix)
 
             
         self.scan(matrix_file)
@@ -253,17 +305,11 @@ class Instance:
     
 
     def clear_idir(self):
-        #clear everithing except S* and W*
-        # matrix_re = re.compile(r'^S.*')
-        # solution_re = re.compile(r'^W.*')
         point_bin = re.compile(r'^[^.]*\.bin$')
-        # enum = [x.value for x in list(ConditioningType)]
-
         
         for filename in os.listdir(self.instance_dir + "/"):
             file_path = os.path.join(self.instance_dir + "/", filename)
 
-            # if os.path.isfile(file_path) and filename not in {"S.bin", "W"} and not pattern.match(filename) :
             # if os.path.isfile(file_path) and not matrix_re.match(filename) and not solution_re.match(filename) :
             if os.path.isfile(file_path) and not point_bin.match(filename) :
                 os.remove(file_path)
@@ -279,10 +325,17 @@ def hamming_3():
     C = codes.HammingCode(GF(2),3)
     G = C.generator_matrix()
 
+    G = matrix(GF(2),
+    [[1, 0, 0, 0, 1, 0, 1],
+    [0, 1, 0, 0, 1, 1, 0],
+    [0, 0, 1, 0, 1, 1, 0],
+    [0, 0, 0, 1, 0, 1, 1]])
+
+
     # the three following need to be done only once
     i.set_code_matrix(G)
-    i.construct_S()
-    print(i.S)
+    i.construct_matrix()
+    print(i.Sraw)
     #i.S_to_bin()
     
     return i
@@ -295,14 +348,14 @@ def hamming_4():
 
     # the three following need to be done only once
     i.set_code_matrix(G)
-    i.construct_matrix()
-    matrix_to_bin(i.path,"Sraw",i.Sraw)
-    i.Sraw = matrix_from_bin(i.path,"Sraw")
+    # i.construct_matrix()
+    # matrix_to_bin(i.path,"Sraw",i.Sraw)
+    # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
 
 def bklc_5():
-    i = Instance("bklc",47,17,5, "512", "128", "2x2")
+    i = Instance("bklc",47,17,5, "128", "128", "3x4")
     G = Matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
@@ -350,14 +403,14 @@ def bklc_4():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
     
-    # i.set_code_matrix(G)
+    i.set_code_matrix(G)
     # i.construct_S()
-    #i.S_to_bin()
+    # i.S_to_bin()
     
     return i
 
 def goppa_2_8_6_s18():
-    i = Instance("goppa_2_8_6", 238, 30, 3, "1024", "128", "4x3" )
+    i = Instance("goppa_2_8_6", 238, 30, 3, "128", "128", "4x3" )
     G = Matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1],
@@ -396,11 +449,22 @@ def goppa_2_8_6_s18():
     i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
+
+
+def goppa_2_10_9_s34():
+    i = Instance("goppa_2_10_9_s34", 990, 56, 3, "128", "128", "4x3" )
+    G = goppa_short(2,10,9,34)
+    i.set_code_matrix(G)
+    i.construct_matrix()
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
+    # i.Sraw = matrix_from_bin(i.path,"Sraw")
+
+    return i
     
 def test_0():
     i = Instance("test",0,0,0,"64", "64", "3x4")
-    i.nrows = 150
-    i.ncols= 200
+    i.nrows = 100
+    i.ncols= 150
 
     matrix = []
     for j in range(i.nrows):
@@ -412,8 +476,8 @@ def test_0():
     matrix[3] = matrix[0]    
     
     
-    i.S_raw = matrix
-    # i.run()
+    i.Sraw = matrix
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
     
     return i
 
@@ -445,8 +509,10 @@ def test_1():
     
     return i
 
+h3 = hamming_3()
 # h4 = hamming_4()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
-goppa = goppa_2_8_6_s18()
+# goppa = goppa_2_8_6_s18()
+# goppa = goppa_2_10_9_s34()

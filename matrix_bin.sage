@@ -87,9 +87,9 @@ def sage_from_bin(path, matrix_name, nrows, ncols):
     except FileNotFoundError:
         print("No file found: " + filename + " doesn't exist !")
 
-    
+# FIXME: assert 
 def solution_from_bin(path, solution_name, nrows, ncols):
-    print(f"{bcolors.BOLD}### Reading solutions {soltion_name}{bcolors.ENDC}")
+    print(f"{bcolors.BOLD}### Reading solutions {solution_name}{bcolors.ENDC}")
     # W is the result file outputed by CADO NFS
     filename = path + "/" + solution_name + ".bin"
 
@@ -108,40 +108,28 @@ def solution_from_bin(path, solution_name, nrows, ncols):
             
             dim_base = max(nrows,  ncols)
             dim_ker = len(bit_vectors) // dim_base
-                
+            assert (len(bit_vectors) % dim_base) == 0
+            assert dim_ker == 64
             ker = Matrix(GF(2), dim_base, dim_ker, bit_vectors)
-            print(f"{bcolors.OKGREEN}Solutions read {self.instance_dir}{bcolors.ENDC}")
+            print(f"Solution dimensions: {ker.dimensions()}")
+            print(f"{bcolors.OKGREEN}Solution read{bcolors.ENDC}")
             
             return ker
     
     except FileNotFoundError:
         print("Cannot read solution, no file found: " + filename + " doesn't exist !")
 
-    # def read_zero(self, file):
-    #     filename = self.instance_dir + "/" + file
-
-    #     try:
-    #         with open(filename, 'rb') as f:
-    #             #read the bin as 32-bit le integer
-    #             data = f.read()
-    #             num_integers = len(data) // 4
-    #             vectors = struct.unpack('<' + 'I' * num_integers, data)
-
-    #             # convert 32-bit integer as vector in 0/1
-    #             bit_vectors = []
-    #             for num in vectors:
-    #                 for i in range(32):
-    #                     bit_vectors.append((num >> i) & 1)
-
-    #             dim_base = max(self.nrows,  self.ncols)
-    #             dim_ker = len(bit_vectors) // dim_base
-
-    #             self.zero = Matrix(GF(2), dim_base, dim_ker, bit_vectors)
-
-    #     except FileNotFoundError:
-    #         print("No file found: " + filename + " doesn't exist !")
 
 def density(matrix, nrows, ncols):
         weight = len(flatten(matrix))
         dst = float(weight)/(nrows*ncols)*100
-        return weight, dst
+        
+        row_weight = [float(len(row))/ncols for row in matrix]
+        row_dst = sum(row_weight)/nrows * 100
+        
+        return weight, dst, row_dst
+
+def density_pretty(weight, dst, row_dst):
+        print(f"weight:{weight}")
+        print(f"density:{dst:.3f}%")
+        print(f"row density:{row_dst:.3f}%")
