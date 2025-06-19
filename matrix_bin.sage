@@ -1,4 +1,5 @@
 def matrix_to_sage(matrix, nrows, ncols):
+    # works with list of list, list of ndarray and ndarray of ndarray
     S_sage = zero_matrix(GF(2),nrows, ncols, sparse = True) # sparse = True is best for visualization (matrix_plot, see self.pretty_print )
     for index,row in enumerate(matrix):
         for coeff in row :
@@ -6,58 +7,79 @@ def matrix_to_sage(matrix, nrows, ncols):
     return S_sage
 
 
-def sage_to_matrix(sage_mat):
-    matrix= []
-    i=0
-    for sage_row in sage_mat:
-        matrix.append(sage_row.support())
-        i+=1
-        progress_percentage = float(i) / float(sage_mat.nrows()) * 100
-        print(f"\rMatrix construction in progress: {progress_percentage:.2f}%", end="", flush=True)
-    return matrix
-
-
 def matrix_to_bin(path , name, matrix):
+    print(f"Writing the matrix {name} in a bin:", flush=True)
+
     with open(path + "/"+ name  +".bin", 'wb') as f:
-        for row in matrix:
+        for irow, row in enumerate(matrix):
         # Write the number of non-zero entries as a 32-bit little-endian integer
             f.write(struct.pack('<I', len(row)))
-        # Write each column index as a 32-bit little-endian integer
-            for col in row:
-                f.write(struct.pack('<I', col))
+            f.write(row.tobytes())
+
+            progress_percentage = float(irow) / float(len(matrix)) * 100
+            print(f"Writing matrix: {progress_percentage:.2f}%", end="\r", flush=True)
 
 
-def matrix_from_bin(path, name):
-    print(f"\nReading the matrix {name} from a bin")
-    filename = path + "/"+ name +".bin"
-
-    matrix = []
+# def matrix_to_bin(path, name, matrix):
+#     print(f"Writing the matrix {name} in a bin:", flush=True)
     
+#     buffer = []
+#     for row in matrix:
+#         buffer.append(struct.pack('<I', len(row)))
+#         buffer.append(row.tobytes())
+
+#     with open(f"{path}/{name}.bin", 'wb') as f:
+#         f.write(b''.join(buffer))
+#     print("Success")
+
+
+# def matrix_to_bin(path , name, matrix):
+#     print(f"Writing the matrix {name} in a bin:", flush=True)
+#     with open(path + "/"+ name  +".bin", 'wb') as f:
+#         for irow, row in enumerate(matrix):
+#         # Write the number of non-zero entries as a 32-bit little-endian integer
+#             f.write(struct.pack('<I', len(row)))
+#         # Write each column index as a 32-bit little-endian integer
+#             for col in row:
+#                 f.write(struct.pack('<I', col))
+
+#             progress_percentage = float(irow) / float(len(matrix)) * 100
+#             print(f"Writing matrix: {progress_percentage:.2f}%", end="\r", flush=True)
+
+
+def matrix_from_bin(path, name, nrows):
+    print(f"Reading the matrix {name} from a bin:")
+    filename = path + "/"+ name +".bin"
+    matrix = np.empty(nrows, dtype=np.ndarray)
+        
     try:
         with open(filename, 'rb') as f:
-            while True:
-                # Read the number of non-zero entries as a 32-bit little-endian integer
-                num_entries_bytes = f.read(4)
-                if not num_entries_bytes:
-                    break  # End of file
-                num_entries = struct.unpack('<I', num_entries_bytes)[0]
+            mmap = np.memmap(f, dtype='uint32', mode='r')
+            irow = 0
+            index = 0
+            while index < len(mmap)-1:
+                # number of non-zero entries
+                num_entries = mmap[index]
+                index += 1
 
-                # Read each column index as a 32-bit little-endian integer
-                row = []
-                for _ in range(num_entries):
-                    col_bytes = f.read(4)
-                    col = struct.unpack('<I', col_bytes)[0]
-                    row.append(col)
+                # column indices
+                row = mmap[index:index + num_entries]
+                index += num_entries
+                matrix[irow] = np.array(row)
+                
+                irow+=1
+                progress_percentage = float(irow) / float(nrows) * 100
+                print(f"Reading matrix: {progress_percentage:.2f}%", end="\r", flush=True)
 
-                # Add the row to the matrix
-                matrix.append(row)
-            # print("here")
+            del mmap
+            print("\n")
             return matrix
 
     except FileNotFoundError:
         print("No file found: " + filename + " doesn't exist !")
 
-    
+
+# TODO: speed-up    
 def sage_from_bin(path, matrix_name, nrows, ncols):
     filename = path + "/" + matrix_name  + ".bin"
  
@@ -81,13 +103,14 @@ def sage_from_bin(path, matrix_name, nrows, ncols):
 
                 # Add the row to the matrix
                 row_index+=1
-            # print("here")
             return S_sage
 
     except FileNotFoundError:
         print("No file found: " + filename + " doesn't exist !")
 
+
 # FIXME: assert 
+# TODO: memory map
 def solution_from_bin(path, solution_name, nrows, ncols):
     print(f"{bcolors.BOLD}### Reading solutions {solution_name}{bcolors.ENDC}")
     # W is the result file outputed by CADO NFS
@@ -120,16 +143,18 @@ def solution_from_bin(path, solution_name, nrows, ncols):
         print("Cannot read solution, no file found: " + filename + " doesn't exist !")
 
 
-def density(matrix, nrows, ncols):
-        weight = len(flatten(matrix))
-        dst = float(weight)/(nrows*ncols)*100
+# def density(matrix, nrows, ncols):
+#         # TODO: does not work with all matrix format
+#         # weight = len(flatten(matrix))
+#         weight = sum([row.size for row in matrix])
+#         density = float(weight)/(nrows*ncols)*100
         
-        row_weight = [float(len(row))/ncols for row in matrix]
-        row_dst = sum(row_weight)/nrows * 100
+#         row_weight = [float(row.size)/ncols for row in matrix]
+#         row_density = sum(row_weight)/nrows * 100
         
-        return weight, dst, row_dst
+#         return weight, density, row_density
 
-def density_pretty(weight, dst, row_dst):
-        print(f"weight:{weight}")
-        print(f"density:{dst:.3f}%")
-        print(f"row density:{row_dst:.3f}%")
+# def density_pretty(weight, dst, row_dst):
+#         print(f"weight:{weight}")
+#         print(f"density:{dst:.3f}%")
+#         print(f"row density:{row_dst:.3f}%")

@@ -4,7 +4,7 @@ import subprocess
 import os
 import re
 import shutil
-
+import timeit
 
 from enum import Enum
 from sage.plot.matrix_plot import MatrixPlot
@@ -22,9 +22,10 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-load("koszul.sage")
 load("goppa.sage")
 load("matrix_bin.sage")
+load("koszul.py")
+
 
 class ConditioningType(Enum):
     RAW = 'raw'
@@ -58,10 +59,10 @@ class Instance:
 
         # matrix system and sol
         self.code_matrix = None
-        self.Sraw = None
+        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage
         self.nrows = binomial(self.k_code,self.r+1) * self.r + binomial(self.k_code,self.r) * self.r # dim of cokernel
         self.ncols = self.n_code * binomial(self.k_code,self.r-1) # dim of arrival space
-        self.ker_raw = None
+        # self.ker_raw = None
 
         # dir / path
         self.current_dir = os.path.abspath(os.curdir)
@@ -84,6 +85,7 @@ class Instance:
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\tm={self.m} n={self.n}\n\tthr={self.thr}\n\tnrows={self.nrows} ncols={self.ncols}\n\tpath={self.path}"
 
 
+    # FIXME: self.Sraw != None
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
         print(self)
         print("\n")
@@ -91,16 +93,14 @@ class Instance:
             matrix, nrows, ncols = self.conditioning_functions[conditioning]()
             P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',')
             P.show(dpi=dpi, axes_pad=0,fontsize=3)
-            # P.show(dpi=dpi)
         else : print("S not defined")
+
 
     def get_files_names(self, conditioning):
         matrix_name = "S" + conditioning.value
         solution_name = "W" + conditioning.value
 
-        return (matrix_name, solution_name)     
-
-    
+        return (matrix_name, solution_name)
 
 
 #################################
@@ -110,17 +110,13 @@ class Instance:
 
     def set_code_matrix(self, matrix):
         self.code_matrix = matrix
-
+        
     
-    def get_code_matrix(self):
-        return self.code_matrix
-    
-
     def construct_matrix(self):
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
         else :
-            Sraw = Betti(self.code_matrix, self.r)
+            Sraw = Koszul(np.array(self.code_matrix, dtype=int), int(self.r))
             self.Sraw = Sraw
 
 
@@ -133,19 +129,31 @@ class Instance:
             nrows = binomial(self.k_code,r+1) * self.r + binomial(self.k_code,r) * r # dim of cokernel
             ncols = self.n_code * binomial(self.k_code,r-1) # dim of arrival space
             print(f"b{r}_{r+1}: {nrows} x {ncols}")
-        
+            
+
+    # WARNING: Not the exact density of the matrix representing the system but it should be close to the real one
+    # Note that the row density is equal to the matrix density
+    def density(self):        
+        square_code_matrix = matrix([self.code_matrix.row(i).pairwise_product(self.code_matrix.row(j)) for i in range(0,self.k_code) for j in range(i,self.k_code)])
+        square_code_density = square_code_matrix.density()
+        S_density = float(square_code_density) * self.n_code * self.r / self.ncols * 100
+        return S_density
 
 
 #################################
 ### Conditioning
 #################################
+    # TODO: - speed up conditioning!
+    #       - use numba ?
+
+    # FIXME: -adapt to matrix format
 
 
     def raw(self):
         print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
         weight, dst, row_dst = density(self.Sraw, self.nrows, self.ncols)
-        print(f"rows x cols: {self.nrows} x {self.ncols}")
-        density_pretty(weight, dst, row_dst)
+        # print(f"rows x cols: {self.nrows} x {self.ncols}")
+        # density_pretty(weight, dst, row_dst)
         return (copy(self.Sraw), self.nrows, self.ncols)
 
 
@@ -161,8 +169,8 @@ class Instance:
         
         matrix_nrows = self.nrows + row_pad
         matrix_ncols = self.ncols + row_pad
-        weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
-        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%\nrow density:{row_dst:.3f}%")
+        # weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
+        # print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%\nrow density:{row_dst:.3f}%")
         return (matrix, matrix_nrows, matrix_ncols)
 
 
@@ -184,9 +192,9 @@ class Instance:
             
         matrix_nrows = self.nrows + row_pad
         matrix_ncols = self.ncols
-        weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
-        print(f"rows x cols: {matrix_nrows} x {matrix_ncols}")
-        density_pretty(weight, dst, row_dst)
+        # weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
+        # print(f"rows x cols: {matrix_nrows} x {matrix_ncols}")
+        # density_pretty(weight, dst, row_dst)
         return (matrix, matrix_nrows, matrix_ncols)
 
         
@@ -194,14 +202,12 @@ class Instance:
 ### Verifications
 #################################
 
-    # TODO: improve checking with all() and any()
+
     # FIXME self.nrows == nrows might be buggy
     def check_solution(self, conditioning=ConditioningType.RAW):
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
         _, solution_file = self.get_files_names(conditioning)
         _, nrows, ncols = self.conditioning_functions[conditioning]()
-
-        # print(self.path + "/" + solution_file)
         
         if os.path.exists(self.path + "/" + solution_file + ".bin"):
             # ker is a sage matrix
@@ -209,20 +215,17 @@ class Instance:
 
             solution = False
 
-            # for c in ker.columns():
-            #     relevant = (c[:self.nrows] != 0)
-            #     irrelevant = (c[self.nrows:nrows] == 0)
-            #     if relevant and irrelevant:
-            #         solution = True
+            relevant_base = vector([any(c) for c in ker[:self.nrows,:].columns()])
+            irrelevant_base = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
 
-            relevant = vector([any(c) for c in ker[:self.nrows,:].columns()])
-            irrelevant = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
+            # print(relevant_base.pairwise_product(irrelevant_base))
+            solution = any(relevant_base.pairwise_product(irrelevant_base))
 
-            print(relevant.pairwise_product(irrelevant))
-            solution = any(relevant.pairwise_product(irrelevant))
+            if solution: 
+                print(f"{bcolors.OKGREEN}The solution is valid{bcolors.ENDC}")
+            else:
+                print(f"{bcolors.FAIL}The solution is not valid{bcolors.ENDC}")
             
-            
-            print(solution)
             return ker
 
         
@@ -268,8 +271,10 @@ class Instance:
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
+
     # TODO: - **kwargs
     #       - conditioning
+    #       - no cloning or copy
     def run(self, conditioning=ConditioningType.RAW):
         matrix_file, solution_file = self.get_files_names(conditioning)
 
@@ -305,13 +310,13 @@ class Instance:
     
 
     def clear_idir(self):
-        point_bin = re.compile(r'^[^.]*\.bin$')
+        dot_bin = re.compile(r'^[^.]*\.bin$')
         
         for filename in os.listdir(self.instance_dir + "/"):
             file_path = os.path.join(self.instance_dir + "/", filename)
 
             # if os.path.isfile(file_path) and not matrix_re.match(filename) and not solution_re.match(filename) :
-            if os.path.isfile(file_path) and not point_bin.match(filename) :
+            if os.path.isfile(file_path) and not dot_bin.match(filename) :
                 os.remove(file_path)
 
 
@@ -335,9 +340,15 @@ def hamming_3():
     # the three following need to be done only once
     i.set_code_matrix(G)
     i.construct_matrix()
-    print(i.Sraw)
-    #i.S_to_bin()
-    
+    S = i.Sraw
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
+    test = matrix_from_bin(i.path,"Sraw", i.nrows)
+    print(type(S))
+    print(S)
+    print(type(test))
+    print(test)
+    eq = np.all([np.array_equal(S[i], test[i]) for i in range(S.size)])
+    print(eq)
     return i
 
 
@@ -375,11 +386,11 @@ def bklc_5():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
     
-    # i.set_code_matrix(G)
+    i.set_code_matrix(G)
     # i.construct_matrix()
     # matrix_to_bin(i.path,"Sraw",i.Sraw)
-    i.Sraw = matrix_from_bin(i.path, "Sraw")
-    
+    # i.Sraw = matrix_from_bin(i.path, "Sraw", i.nrows)
+
     return i
 
 def bklc_4():
@@ -454,11 +465,18 @@ def goppa_2_8_6_s18():
 def goppa_2_10_9_s34():
     i = Instance("goppa_2_10_9_s34", 990, 56, 3, "128", "128", "4x3" )
     G = goppa_short(2,10,9,34)
-    i.set_code_matrix(G)
-    i.construct_matrix()
-    matrix_to_bin(i.path,"Sraw",i.Sraw)
-    # i.Sraw = matrix_from_bin(i.path,"Sraw")
+    
+    # i.set_code_matrix(G)
+    # i.construct_matrix()
+    # i.Sraw = syst
+    i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
+    # matrix_to_bin(i.path,"Stest",i.Sraw)
 
+    # Stest = matrix_from_bin(i.path,"Stest", nrows = i.nrows)
+
+    # eq = np.all([np.array_equal(i.Sraw[j], Stest[j]) for j in range(Stest.size)])
+    # print(eq)
+    
     return i
     
 def test_0():
@@ -509,10 +527,10 @@ def test_1():
     
     return i
 
-h3 = hamming_3()
+# h3 = hamming_3()
 # h4 = hamming_4()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
-# goppa = goppa_2_10_9_s34()
+goppa= goppa_2_10_9_s34()
