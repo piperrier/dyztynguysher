@@ -89,11 +89,11 @@ class Instance:
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
         print(self)
         print("\n")
-        if self.Sraw != None:
-            matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-            P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',')
-            P.show(dpi=dpi, axes_pad=0,fontsize=3)
-        else : print("S not defined")
+        # if self.Sraw != None:
+        matrix, nrows, ncols = self.conditioning_functions[conditioning]()
+        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',')
+        P.show(dpi=dpi, axes_pad=0,fontsize=3)
+        # else : print("S not defined")
 
 
     def get_files_names(self, conditioning):
@@ -151,7 +151,7 @@ class Instance:
 
     def raw(self):
         print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
-        weight, dst, row_dst = density(self.Sraw, self.nrows, self.ncols)
+        # weight, dst, row_dst = density(self.Sraw, self.nrows, self.ncols)
         # print(f"rows x cols: {self.nrows} x {self.ncols}")
         # density_pretty(weight, dst, row_dst)
         return (copy(self.Sraw), self.nrows, self.ncols)
@@ -175,21 +175,22 @@ class Instance:
 
 
     # FIXME assert
-    def randompad(self, row_weight=150):
+    def randompad(self, row_weight=710):
         print(f"{bcolors.BOLD}### Random row pad conditioning{bcolors.ENDC}")
         
         row_pad =  self.ncols - self.nrows
         assert row_pad >=0 
         print(f"Padding {row_pad} rows with {row_weight} elements")
-        matrix = copy(self.Sraw)
+        padding= np.empty(row_pad, dtype=np.ndarray)
 
-        for j in range(row_pad):
-            row = set()
-            while len(row) != row_weight:
-                # python sets are ordered
-                row.add(ZZ.random_element(self.ncols))
-            matrix.append(row)
-            
+        rng = np.random.default_rng()
+
+        for j in range(row_pad): 
+            row = rng.choice(np.arange(self.ncols, dtype='uint32'), size=row_weight, replace=False)
+            row.sort()
+            padding[j] = row
+
+        matrix = np.append(self.Sraw, padding)
         matrix_nrows = self.nrows + row_pad
         matrix_ncols = self.ncols
         # weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
@@ -236,10 +237,12 @@ class Instance:
 
 
     def scan(self, matrix_file):
+        print(f"{bcolors.BOLD}### Scan{bcolors.ENDC}")
         subprocess.run("mf_scan2 " + self.path + "/"+ matrix_file  +".bin", shell=True)
 
 
     def balancing(self, matrix_file):
+        print(f"{bcolors.BOLD}### Balancing{bcolors.ENDC}")
         subprocess.run("mf_bal "
         + self.thr + "                      \
         mfile=" + self.path + "/" + matrix_file + ".bin       \
@@ -249,6 +252,7 @@ class Instance:
 
 
     def bwc(self, matrix_file):
+        print(f"{bcolors.BOLD}### Bwc{bcolors.ENDC}")
         threads = (self.thr).split('x')
         thr = ''.join(threads)
 
@@ -276,6 +280,7 @@ class Instance:
     #       - conditioning
     #       - no cloning or copy
     def run(self, conditioning=ConditioningType.RAW):
+        print(f"{bcolors.BOLD}### Run{bcolors.ENDC}")
         matrix_file, solution_file = self.get_files_names(conditioning)
 
         # build the matrix of the system if it does not exist
@@ -340,15 +345,9 @@ def hamming_3():
     # the three following need to be done only once
     i.set_code_matrix(G)
     i.construct_matrix()
-    S = i.Sraw
     matrix_to_bin(i.path,"Sraw",i.Sraw)
-    test = matrix_from_bin(i.path,"Sraw", i.nrows)
-    print(type(S))
-    print(S)
-    print(type(test))
-    print(test)
-    eq = np.all([np.array_equal(S[i], test[i]) for i in range(S.size)])
-    print(eq)
+    # eq = np.all([np.array_equal(S[i], test[i]) for i in range(S.size)])
+    # print(eq)
     return i
 
 
@@ -359,8 +358,8 @@ def hamming_4():
 
     # the three following need to be done only once
     i.set_code_matrix(G)
-    # i.construct_matrix()
-    # matrix_to_bin(i.path,"Sraw",i.Sraw)
+    i.construct_matrix()
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
@@ -387,8 +386,8 @@ def bklc_5():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
     
     i.set_code_matrix(G)
-    # i.construct_matrix()
-    # matrix_to_bin(i.path,"Sraw",i.Sraw)
+    i.construct_matrix()
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
     # i.Sraw = matrix_from_bin(i.path, "Sraw", i.nrows)
 
     return i
@@ -457,7 +456,7 @@ def goppa_2_8_6_s18():
     i.set_code_matrix(G)
     # i.construct_matrix()
     # matrix_to_bin(i.path,"Sraw",i.Sraw)
-    i.Sraw = matrix_from_bin(i.path,"Sraw")
+    i.Sraw = matrix_from_bin(i.path,"Sraw", i.nrows)
 
     return i
 
@@ -466,7 +465,7 @@ def goppa_2_10_9_s34():
     i = Instance("goppa_2_10_9_s34", 990, 56, 3, "128", "128", "4x3" )
     G = goppa_short(2,10,9,34)
     
-    # i.set_code_matrix(G)
+    i.set_code_matrix(G)
     # i.construct_matrix()
     # i.Sraw = syst
     i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
