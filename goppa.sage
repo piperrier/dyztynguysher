@@ -13,9 +13,9 @@ def goppa_short(q, m, t, s):
     random.shuffle(S)
     
     while True:
-        p_sup = [i for i in range(1,n+1)]
-        random.shuffle(p_sup)
-        p = Permutation(p_sup)
+        perm_support = [i for i in range(1,n+1)]
+        random.shuffle(perm_support)
+        p = Permutation(perm_support)
         p.action(S)
         
         R.<z> = PolynomialRing(K)
