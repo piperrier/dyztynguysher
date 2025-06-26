@@ -31,6 +31,7 @@ def index_of_combination(combinaison, n):
         prev = combinaison[i]
     return index
 
+# TODO: W is useless
 # S is row convention
 # S is a list of list, each list is a row and contains the non zero columns of the row
 def construct_S(n,k,r,G,W):
