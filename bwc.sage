@@ -8,6 +8,7 @@ import timeit
 
 from enum import Enum
 from sage.plot.matrix_plot import MatrixPlot
+from decimal import Decimal
 
 
 class bcolors:
@@ -25,11 +26,11 @@ class bcolors:
 load("goppa.sage")
 load("matrix_bin.sage")
 load("koszul.py")
-
+load("conditioning.py")
 
 class ConditioningType(Enum):
     RAW = 'raw'
-    BLOCK1 = 'block1'
+    # BLOCK1 = 'block1'
     RANDOMPAD= 'randompad'
 
 
@@ -73,7 +74,8 @@ class Instance:
         # conditioning
         self.conditioning_functions = {
             ConditioningType.RAW: self.raw,
-            ConditioningType.BLOCK1: self.block1,
+            # ConditioningType.BLOCK1: self.block1,
+            # ConditioningType.RANDOMPAD: self.RandomRawPad,
             ConditioningType.RANDOMPAD: self.randompad,
         }
         
@@ -82,8 +84,22 @@ class Instance:
 
 
     def __repr__(self):
-        return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\tm={self.m} n={self.n}\n\tthr={self.thr}\n\tnrows={self.nrows} ncols={self.ncols}\n\tpath={self.path}"
+        return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
+        m={self.m} n={self.n}\n\
+        thr={self.thr}\n\
+        nrows={self.nrows} ncols={self.ncols}\n\
+        density={round(self.density()*100,5)}% weight={self.ncols * self.nrows * self.density():.0f} space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10^-9:.3f}Gb\n\
+        path={self.path}"
 
+
+    def complexity(self):
+        n, m = float(self.n), float(self.m)
+        logcol = float(log(self.ncols))
+
+        print((f"matrix: space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10^-9}Gb\n"
+        f"krylov & mksol: matrix-times-vector products={(1 + n/m + 64/n)*self.ncols:.2E}\n"
+        f"lingen: time={(m+n)*self.ncols*logcol*(m+n+logcol):.2E} space={(m+n)*self.ncols:.2E}"))
+        
 
     # FIXME: self.Sraw != None
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
@@ -91,7 +107,7 @@ class Instance:
         print("\n")
         # if self.Sraw != None:
         matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',')
+        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',', markersize='10')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
         # else : print("S not defined")
 
@@ -126,8 +142,8 @@ class Instance:
             r_max = self.r+1
 
         for r in range(r_min, r_max):
-            nrows = binomial(self.k_code,r+1) * self.r + binomial(self.k_code,r) * r # dim of cokernel
-            ncols = self.n_code * binomial(self.k_code,r-1) # dim of arrival space
+            nrows = binomial(self.k_code, r+1) * r + binomial(self.k_code, r) * r # dim of cokernel
+            ncols = self.n_code * binomial(self.k_code, r-1) # dim of arrival space
             print(f"b{r}_{r+1}: {nrows} x {ncols}")
             
 
@@ -136,7 +152,7 @@ class Instance:
     def density(self):        
         square_code_matrix = matrix([self.code_matrix.row(i).pairwise_product(self.code_matrix.row(j)) for i in range(0,self.k_code) for j in range(i,self.k_code)])
         square_code_density = square_code_matrix.density()
-        S_density = float(square_code_density) * self.n_code * self.r / self.ncols * 100
+        S_density = float(square_code_density) * self.n_code * self.r / self.ncols
         return S_density
 
 
@@ -175,7 +191,7 @@ class Instance:
 
 
     # FIXME assert
-    def randompad(self, row_weight=710):
+    def randompad(self, row_weight=968):
         print(f"{bcolors.BOLD}### Random row pad conditioning{bcolors.ENDC}")
         
         row_pad =  self.ncols - self.nrows
@@ -208,6 +224,7 @@ class Instance:
     def check_solution(self, conditioning=ConditioningType.RAW):
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
         _, solution_file = self.get_files_names(conditioning)
+        # nrows, ncols = self.conditioning_functions[conditioning].get_dim(self.nrows, self.ncols)
         _, nrows, ncols = self.conditioning_functions[conditioning]()
         
         if os.path.exists(self.path + "/" + solution_file + ".bin"):
@@ -219,7 +236,8 @@ class Instance:
             relevant_base = vector([any(c) for c in ker[:self.nrows,:].columns()])
             irrelevant_base = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
 
-            # print(relevant_base.pairwise_product(irrelevant_base))
+            print(relevant_base.pairwise_product(irrelevant_base))
+            print(sum(relevant_base.pairwise_product(irrelevant_base)))
             solution = any(relevant_base.pairwise_product(irrelevant_base))
 
             if solution: 
@@ -288,7 +306,7 @@ class Instance:
             # print(self.conditioning_functions[conditioning])
             # matrix, nrows, ncols = self.conditioning_functions[conditioning]()
             # matrix_to_bin(self.path, matrix_file, matrix)
-        print(self.conditioning_functions[conditioning])
+        # print(self.conditioning_functions[conditioning])
         matrix, nrows, ncols = self.conditioning_functions[conditioning]()
         matrix_to_bin(self.path, matrix_file, matrix)
 
@@ -353,6 +371,19 @@ def hamming_3():
 
 def hamming_4():
     i = Instance("hamming", 15, 11, 5, "128", "64", "2x2")
+    C = codes.HammingCode(GF(2),4)
+    G = C.generator_matrix()
+
+    # the three following need to be done only once
+    i.set_code_matrix(G)
+    i.construct_matrix()
+    matrix_to_bin(i.path,"Sraw",i.Sraw)
+    # i.Sraw = matrix_from_bin(i.path,"Sraw")
+
+    return i
+    
+def hamming_4_8():
+    i = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
 
@@ -454,15 +485,15 @@ def goppa_2_8_6_s18():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1]])
     
     i.set_code_matrix(G)
-    # i.construct_matrix()
+    i.construct_matrix()
     # matrix_to_bin(i.path,"Sraw",i.Sraw)
-    i.Sraw = matrix_from_bin(i.path,"Sraw", i.nrows)
+    # i.Sraw = matrix_from_bin(i.path,"Sraw", i.nrows)
 
     return i
 
 
 def goppa_2_10_9_s34():
-    i = Instance("goppa_2_10_9_s34", 990, 56, 3, "128", "128", "4x3" )
+    i = Instance("goppa_2_10_9_s34", 990, 56, 3, "64", "64", "4x3" )
     G = goppa_short(2,10,9,34)
     
     i.set_code_matrix(G)
@@ -471,6 +502,26 @@ def goppa_2_10_9_s34():
     i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
     # matrix_to_bin(i.path,"Stest",i.Sraw)
 
+    # Stest = matrix_from_bin(i.path,"Stest", nrows = i.nrows)
+
+    # eq = np.all([np.array_equal(i.Sraw[j], Stest[j]) for j in range(Stest.size)])
+    # print(eq)
+    
+    return i
+
+    
+def goppa_2_10_10_s40():
+    i = Instance("goppa_2_10_10_s40", 984, 60, 4, "64", "64", "4x3" )
+    G = goppa_short(2,10,10,40)
+    
+    i.set_code_matrix(G)
+    # i.construct_matrix()
+    # i.Sraw = syst
+    # i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
+    # matrix_to_bin(i.path,"Stest",i.Sraw)
+
+    # i.run(ConditioningType.RANDOMPAD)
+    
     # Stest = matrix_from_bin(i.path,"Stest", nrows = i.nrows)
 
     # eq = np.all([np.array_equal(i.Sraw[j], Stest[j]) for j in range(Stest.size)])
@@ -528,8 +579,10 @@ def test_1():
 
 # h3 = hamming_3()
 # h4 = hamming_4()
+# h48 = hamming_4_8()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
 goppa= goppa_2_10_9_s34()
+# goppa= goppa_2_10_10_s40()
