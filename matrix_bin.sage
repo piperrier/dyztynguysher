@@ -20,33 +20,6 @@ def matrix_to_bin(path , name, matrix):
             print(f"Writing matrix: {progress_percentage:.2f}%", end="\r", flush=True)
 
 
-# def matrix_to_bin(path, name, matrix):
-#     print(f"Writing the matrix {name} in a bin:", flush=True)
-    
-#     buffer = []
-#     for row in matrix:
-#         buffer.append(struct.pack('<I', len(row)))
-#         buffer.append(row.tobytes())
-
-#     with open(f"{path}/{name}.bin", 'wb') as f:
-#         f.write(b''.join(buffer))
-#     print("Success")
-
-
-# def matrix_to_bin(path , name, matrix):
-#     print(f"Writing the matrix {name} in a bin:", flush=True)
-#     with open(path + "/"+ name  +".bin", 'wb') as f:
-#         for irow, row in enumerate(matrix):
-#         # Write the number of non-zero entries as a 32-bit little-endian integer
-#             f.write(struct.pack('<I', len(row)))
-#         # Write each column index as a 32-bit little-endian integer
-#             for col in row:
-#                 f.write(struct.pack('<I', col))
-
-#             progress_percentage = float(irow) / float(len(matrix)) * 100
-#             print(f"Writing matrix: {progress_percentage:.2f}%", end="\r", flush=True)
-
-
 def matrix_from_bin(path, name, nrows):
     print(f"Reading the matrix {name} from a bin:")
     filename = path + "/"+ name +".bin"
@@ -71,6 +44,7 @@ def matrix_from_bin(path, name, nrows):
                 progress_percentage = float(irow) / float(nrows) * 100
                 print(f"Reading matrix: {progress_percentage:.2f}%", end="\r", flush=True)
 
+            # mmap.close()
             del mmap
             print("\n")
             return matrix
@@ -141,20 +115,3 @@ def solution_from_bin(path, solution_name, nrows, ncols):
     
     except FileNotFoundError:
         print("Cannot read solution, no file found: " + filename + " doesn't exist !")
-
-
-# def density(matrix, nrows, ncols):
-#         # TODO: does not work with all matrix format
-#         # weight = len(flatten(matrix))
-#         weight = sum([row.size for row in matrix])
-#         density = float(weight)/(nrows*ncols)*100
-        
-#         row_weight = [float(row.size)/ncols for row in matrix]
-#         row_density = sum(row_weight)/nrows * 100
-        
-#         return weight, density, row_density
-
-# def density_pretty(weight, dst, row_dst):
-#         print(f"weight:{weight}")
-#         print(f"density:{dst:.3f}%")
-#         print(f"row density:{row_dst:.3f}%")
