@@ -35,7 +35,37 @@ def index_of_combination(combinaison, n):
 
 
 # TODO: Idealy we would return a ndarray of ndarray and not a list of ndarray
-@njit
+# @njit
+# def construct_S(n, k, r, G, C_r):
+#     nrows_S = math.comb(k, r+1) * r + math.comb(k, r) * r
+#     ncols_S = n * math.comb(k, r-1)
+
+#     print("\n### Const S")
+#     print("Sdim", nrows_S, ncols_S)
+#     S = []
+#     row_S = 0
+
+#     for index_I, I in enumerate(C_r):
+#         for alpha in range(I[-1]+1):
+#             # for every vec in the cokernel, compute it
+#             col = []
+#             for j in range(r):
+#                 c = G[alpha, :] * G[I[j], :]
+#                 for u, gamma in enumerate(c):
+#                     shift = index_of_combination(np.concatenate((I[0:j], I[j+1:]), axis=0), k - 1)
+#                     if gamma:
+#                         col.append(math.comb(k, r-1) * u + shift)
+#             col.sort()
+#             S.append(np.array(col, dtype='uint32'))
+#             row_S += 1
+#             progress_percentage = (row_S / nrows_S) * 100
+#             with objmode():
+#                 print("Matrix construction in progress:" + str(round(progress_percentage,2))+ "%", end="\r", flush=True)
+
+#     # print("\n")
+#     return S
+
+@njit(parallel=True)
 def construct_S(n, k, r, G, C_r):
     nrows_S = math.comb(k, r+1) * r + math.comb(k, r) * r
     ncols_S = n * math.comb(k, r-1)
@@ -54,7 +84,7 @@ def construct_S(n, k, r, G, C_r):
                 for u, gamma in enumerate(c):
                     shift = index_of_combination(np.concatenate((I[0:j], I[j+1:]), axis=0), k - 1)
                     if gamma:
-                        col.append(math.comb(k, r-1) * u + shift)
+                        col.append(shift * n + u)
             col.sort()
             S.append(np.array(col, dtype='uint32'))
             row_S += 1
@@ -64,7 +94,6 @@ def construct_S(n, k, r, G, C_r):
 
     # print("\n")
     return S
-
 
 # @njit
 # def g_construct_S(n, k, r, G, W, C_r):
@@ -104,6 +133,7 @@ def Koszul(G, r):
     k, n = G.shape
 
     C_r = [np.array(subset) for subset in itertools.combinations(np.arange(k), r)]
+    # print(C_r)
     S_coker = np.array(construct_S(n, k, r, G, C_r), dtype=np.ndarray)
 
     return S_coker
