@@ -1,32 +1,34 @@
-import struct
 import random
 import subprocess
 import os
 import re
 import shutil
 import timeit
+import numpy as np
+import queue
+import threading
+import io
 
 from enum import Enum
-from sage.plot.matrix_plot import MatrixPlot
-from decimal import Decimal
+from utils import *
+from goppa import *
+from matrix_bin import *
+from koszul import *
+from copy import copy
+
+import sage.coding.codes_catalog
+
+from sage.plot.matrix_plot import matrix_plot
+from sage.functions.other import binomial
+from sage.matrix.constructor import matrix
+from sage.misc.functional import log
+from sage.functions.other import ceil
+from sage.rings.integer_ring import ZZ
+from sage.modules.free_module_element import vector
+from sage.rings.finite_rings.finite_field_constructor import GF
 
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-load("goppa.sage")
-load("matrix_bin.sage")
-load("koszul.py")
-load("conditioning.py")
+#from sage.all import *
 
 class ConditioningType(Enum):
     RAW = 'raw'
@@ -84,11 +86,16 @@ class Instance:
 
 
     def __repr__(self):
+        row_red=self.nrows-self.r*binomial(self.k_code, self.r)
+        col_red=self.ncols - self.r*binomial(self.k_code, self.r) - (self.r-1)*binomial(self.k_code,self.r-1)
+        space_red = (row_red * col_red * self.density() + row_red)*4*10**-9
+        
+
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
         thr={self.thr}\n\
-        nrows={self.nrows} ncols={self.ncols}\n\
-        density={round(self.density()*100,5)}% weight={self.ncols * self.nrows * self.density():.0f} space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10^-9:.3f}Gb\n\
+        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.r*binomial(self.k_code, self.r) + (self.r-1)*binomial(self.k_code,self.r-1)}\n\
+        density={round(self.density()*100,5)}% weight={self.ncols * self.nrows * self.density():.0f} space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
         path={self.path}"
 
 
@@ -96,7 +103,7 @@ class Instance:
         n, m = float(self.n), float(self.m)
         logcol = float(log(self.ncols))
 
-        print((f"matrix: space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10^-9}Gb\n"
+        print((f"matrix: space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10**-9}Gb\n"
         f"krylov & mksol: matrix-times-vector products={(1 + n/m + 64/n)*self.ncols:.2E}\n"
         f"lingen: time={(m+n)*self.ncols*logcol*(m+n+logcol):.2E} space={(m+n)*self.ncols:.2E}"))
         
@@ -107,7 +114,7 @@ class Instance:
         print("\n")
         # if self.Sraw != None:
         matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',', markersize='10')
+        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',', markersize='5')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
         # else : print("S not defined")
 
@@ -132,8 +139,21 @@ class Instance:
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
         else :
-            Sraw = Koszul(np.array(self.code_matrix, dtype=int), int(self.r))
+            print(f"{bcolors.BOLD}### Constructing the matrix of the system{bcolors.ENDC}")
+            Sraw = Koszul(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r))
             self.Sraw = Sraw
+
+    def construct_and_write(self):
+        pass
+        data_queue = queue.Queue()
+        compute_thread  = threading.Thread(target=compute_matrix, args=(data_queue))
+        write_thread  = threading.Thread(target=write_matrix, args=(data_queue))
+
+        compute_thread.start()
+        write_thread.start()
+
+        compute_thread.join()
+        write_thread.join()
 
 
     def size(self, r_min=None, r_max=None):
@@ -364,8 +384,7 @@ def hamming_3():
     i.set_code_matrix(G)
     i.construct_matrix()
     matrix_to_bin(i.path,"Sraw",i.Sraw)
-    # eq = np.all([np.array_equal(S[i], test[i]) for i in range(S.size)])
-    # print(eq)
+
     return i
 
 
@@ -397,7 +416,7 @@ def hamming_4_8():
 
 def bklc_5():
     i = Instance("bklc",47,17,5, "128", "128", "3x4")
-    G = Matrix(GF(2),
+    G = matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
         [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1],
@@ -425,7 +444,7 @@ def bklc_5():
 
 def bklc_4():
     i = Instance("bklc",47,17,4, "512", "64", "3x4")
-    G = Matrix(GF(2),
+    G = matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
         [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1],
@@ -452,7 +471,7 @@ def bklc_4():
 
 def goppa_2_8_6_s18():
     i = Instance("goppa_2_8_6", 238, 30, 3, "128", "128", "4x3" )
-    G = Matrix(GF(2),
+    G = matrix(GF(2),
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1],
         [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0],
@@ -486,6 +505,11 @@ def goppa_2_8_6_s18():
     
     i.set_code_matrix(G)
     i.construct_matrix()
+
+    
+    # test=True
+    # time = timeit.timeit(lambda: comp_mat(0,94395, np.array(G, dtype=int),int(3)), number=1)
+    # print(time)    
     # matrix_to_bin(i.path,"Sraw",i.Sraw)
     # i.Sraw = matrix_from_bin(i.path,"Sraw", i.nrows)
 
@@ -584,5 +608,5 @@ def test_1():
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
-goppa= goppa_2_10_9_s34()
-# goppa= goppa_2_10_10_s40()
+# goppa= goppa_2_10_9_s34()
+goppa= goppa_2_10_10_s40()

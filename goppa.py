@@ -1,3 +1,14 @@
+import sage.coding.codes_catalog as codes
+import random
+
+from sage.rings.finite_rings.finite_field_constructor import GF
+from sage.matrix.constructor import matrix
+from sage.misc.functional import rank
+from sage.combinat.permutation import Permutation
+#from sage.misc.prandom import random
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+
+
 # q  the base field cardinality
 # m  the extension degree
 # t  the error correcting capability
@@ -5,9 +16,9 @@
 
 def goppa_short(q, m, t, s):
     F = GF(2)
-    n = 2^m
-    K.<b> = F.extension(m)
-    # print(K)
+    n = 2**m
+    #K.<b> = F.extension(m)
+    K = F.extension(m, names=('b',)); (b,) = K._first_ngens(1)
 
     S = list(K)
     random.shuffle(S)
@@ -18,7 +29,8 @@ def goppa_short(q, m, t, s):
         p = Permutation(perm_support)
         p.action(S)
         
-        R.<z> = PolynomialRing(K)
+        #R.<z> = PolynomialRing(K)
+        R = PolynomialRing(K, names=('z',)); (z,) = R._first_ngens(1)
         g = R.irreducible_element(t, algorithm="random")
         
         C = codes.GoppaCode(g,S)

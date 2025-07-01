@@ -1,3 +1,11 @@
+import struct
+import numpy as np
+
+from sage.rings.finite_rings.finite_field_constructor import GF
+from sage.matrix.special import zero_matrix
+from sage.matrix.constructor import matrix
+from utils import bcolors
+
 def matrix_to_sage(matrix, nrows, ncols):
     # works with list of list, list of ndarray and ndarray of ndarray
     S_sage = zero_matrix(GF(2),nrows, ncols, sparse = True) # sparse = True is best for visualization (matrix_plot, see self.pretty_print )
@@ -107,7 +115,7 @@ def solution_from_bin(path, solution_name, nrows, ncols):
             dim_ker = len(bit_vectors) // dim_base
             assert (len(bit_vectors) % dim_base) == 0
             assert dim_ker == 64
-            ker = Matrix(GF(2), dim_base, dim_ker, bit_vectors)
+            ker = matrix(GF(2), dim_base, dim_ker, bit_vectors)
             print(f"Solution dimensions: {ker.dimensions()}")
             print(f"{bcolors.OKGREEN}Solution read{bcolors.ENDC}")
             
