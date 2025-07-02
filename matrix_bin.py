@@ -4,6 +4,7 @@ import numpy as np
 from sage.rings.finite_rings.finite_field_constructor import GF
 from sage.matrix.special import zero_matrix
 from sage.matrix.constructor import matrix
+
 from utils import bcolors
 
 def matrix_to_sage(matrix, nrows, ncols):

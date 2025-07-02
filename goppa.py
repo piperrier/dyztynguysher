@@ -1,11 +1,11 @@
-import sage.coding.codes_catalog as codes
+#import sage.coding.codes_catalog as codes
 import random
 
 from sage.rings.finite_rings.finite_field_constructor import GF
 from sage.matrix.constructor import matrix
 from sage.misc.functional import rank
 from sage.combinat.permutation import Permutation
-#from sage.misc.prandom import random
+from sage.misc.prandom import random
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
 
