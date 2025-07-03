@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import struct
 
 from numba import njit, types
 from numba.extending import overload
@@ -23,9 +24,6 @@ def jit_comb(n, k):
 # OK
 @njit
 def combination_at_index(i, k, n):
-    #assert 0<=k<=n, "k must be less than or equal to n"
-    #assert i>=0, "i must be non-negative"
-
     result = []
     x = 0
     for remaining in range(k, 0, -1):
@@ -44,13 +42,11 @@ def index_of_combination(combinaison, n):
     index = 0
     prev = -1
     for i in range(k):
-        #for x in range(prev + 1, combinaison[i]):
-        #    index += math.comb(n - x, k - i - 1)
         index += math.comb(n-prev-1,k-i) - math.comb(n-combinaison[i],k-i)
         prev = combinaison[i]
     return index
 
-
+"""
 @njit
 def index_to_base_coker(index, k, r):
     elt = []
@@ -107,6 +103,25 @@ def index_to_base_coker(index, k, r):
     elt.append(index - cursor)
     
     return elt
+"""
+
+@njit
+def index_to_base_coker(index, k, r):
+    cursor = 0
+    _cursor = 0
+    lp = -1
+    elt = []
+
+    for p in range(1,r+1):
+        while cursor <= index:
+            lp += 1
+            _cursor = cursor
+            cursor += (r-p) * math.comb(k-lp,r-p+1)+(lp+1)*math.comb(k-lp-1,r-p)
+        elt.append(lp)
+        cursor = _cursor
+    elt.append(index-cursor)
+       
+    return elt
 
 
 
@@ -126,9 +141,6 @@ def diff_supp(v,G,r):
     for j in range(r):
         c = G[l, :] * G[elem[j], :]
         index = index_of_combination(np.array(elem[:j]+elem[j+1:]),k)*n
-        #print(index)
-        #print(np.nonzero(c)[0])
-        #print(c)
         res = np.append(res, (np.nonzero(c)[0] + index).astype('uint32'))   
 
     res.sort()
@@ -152,11 +164,24 @@ def Koszul(row_begin, row_end, G, r):
         diff_row = diff_supp(i, G, r)
         S_coker.append(diff_row)
         progress_percentage = round(float(i)/row_end * 100,2)
-        #print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+        print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
 
     return np.array(S_coker, dtype=np.ndarray)
 
 
+def Koszul_queue(row_begin, row_end, G, r, data_queue):
+    try:
+        for i in range(row_begin, row_end):
+            row = diff_supp(i, G, r)
+            data_queue.put(struct.pack('<I', len(row)))
+            data_queue.put(row.tobytes())
+            progress_percentage = round(float(i)/row_end * 100,2)
+            print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+
+        data_queue.put(None)  # Signal that computation is done
+    except Exception as e:
+        print(f"Error in computation thread: {e}")
+        data_queue.put(None)  # Ensure the writing thread can exit
 
 if __name__ == '__main__':
     import timeit
@@ -210,6 +235,9 @@ if __name__ == '__main__':
 
     S = Koszul(0, nrows, G, r)
 
-    time = timeit.timeit(lambda: Koszul(0, nrows, G, r), number=1)
+    #from matrix_bin import *
+    #test = matrix_to_sage(S, nrows)
 
-    print("Time for Koszul:", time)
+
+    time = timeit.timeit(lambda: Koszul(0, nrows, G, r), number=1)
+    print(f"Time for Koszul: {time:.2f} sec")
