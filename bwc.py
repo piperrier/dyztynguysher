@@ -147,7 +147,7 @@ class Instance:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
         else :
             print(f"{bcolors.BOLD}### Constructing the matrix of the system {self.name}{bcolors.ENDC}")
-            Sraw = Koszul(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r))
+            Sraw = koszul_cohom(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r))
             self.Sraw = Sraw
 
     # TODO: 
@@ -159,7 +159,7 @@ class Instance:
         #pass
         #matrix_name, _ = self.get_files_names()
         data_queue = queue.Queue()
-        compute_thread  = threading.Thread(target=Koszul_queue, args=(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r), data_queue))
+        compute_thread  = threading.Thread(target=koszul_cohom_queue, args=(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r), data_queue))
         write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.path, "Aq", data_queue))
 
         compute_thread.start()

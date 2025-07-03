@@ -150,7 +150,7 @@ def diff_supp(v,G,r):
 ##################################
 
 
-def Koszul(row_begin, row_end, G, r):
+def koszul_cohom(row_begin, row_end, G, r):
     """
     Computes the image of the cokernel elements between (row_begin and row_end(exluded))
     This function is used to computed the image of the cohomology
@@ -169,7 +169,7 @@ def Koszul(row_begin, row_end, G, r):
     return np.array(S_coker, dtype=np.ndarray)
 
 
-def Koszul_queue(row_begin, row_end, G, r, data_queue):
+def koszul_cohom_queue(row_begin, row_end, G, r, data_queue):
     try:
         for i in range(row_begin, row_end):
             row = diff_supp(i, G, r)
@@ -233,11 +233,11 @@ if __name__ == '__main__':
     nrows = 92820
     r = 5
 
-    S = Koszul(0, nrows, G, r)
+    S = koszul_cohom(0, nrows, G, r)
 
     #from matrix_bin import *
     #test = matrix_to_sage(S, nrows)
 
 
-    time = timeit.timeit(lambda: Koszul(0, nrows, G, r), number=1)
+    time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     print(f"Time for Koszul: {time:.2f} sec")
