@@ -17,6 +17,7 @@ from utils import *
 from goppa import *
 from matrix_bin import *
 from koszul import *
+from conditioning import *
 
 import sage.coding.codes_catalog
 
@@ -32,10 +33,7 @@ from sage.rings.finite_rings.finite_field_constructor import GF
 
 #from sage.all import *
 
-class ConditioningType(Enum):
-    RAW = 'raw'
-    # BLOCK1 = 'block1'
-    RANDOMPAD= 'randompad'
+
 
 
 class Instance:
@@ -102,6 +100,9 @@ class Instance:
 
 
     def complexity(self):
+        """
+        Approximate complexity of the block wiedemann algorithm
+        """
         n, m = float(self.n), float(self.m)
         logcol = float(log(self.ncols))
 
@@ -138,28 +139,40 @@ class Instance:
         
     
     def construct_matrix(self):
+        """
+        Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file.
+        Don't use this function for large matrices (5>GB)
+        """
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
         else :
-            print(f"{bcolors.BOLD}### Constructing the matrix of the system{bcolors.ENDC}")
+            print(f"{bcolors.BOLD}### Constructing the matrix of the system {self.name}{bcolors.ENDC}")
             Sraw = Koszul(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r))
             self.Sraw = Sraw
 
     # TODO: 
-    def construct_and_write(self):
-        pass
+    def construct_and_write_matrix(self):
+        """
+        Construct the whole matrix block by block and write in a file in a mean time
+        Prefer this function for large matrices (5>GB)
+        """
+        #pass
+        #matrix_name, _ = self.get_files_names()
         data_queue = queue.Queue()
-        compute_thread  = threading.Thread(target=compute_matrix, args=(data_queue))
-        write_thread  = threading.Thread(target=write_matrix, args=(data_queue))
+        compute_thread  = threading.Thread(target=Koszul_queue, args=(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r), data_queue))
+        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.path, "Aq", data_queue))
 
         compute_thread.start()
         write_thread.start()
 
         compute_thread.join()
         write_thread.join()
-
+        print("Matrix computation and writing completed.")
 
     def size(self, r_min=None, r_max=None):
+        """
+        Size of the koszul cohomology matrices
+        """
         if r_min == r_max == None :
             r_min = self.r
             r_max = self.r+1
@@ -172,7 +185,10 @@ class Instance:
 
     # WARNING: Not the exact density of the matrix representing the system but it should be close to the real one
     # Note that the row density is equal to the matrix density
-    def density(self):        
+    def density(self):
+        """
+        Approximate density of the koszul cohomology matrix
+        """        
         square_code_matrix = matrix([self.code_matrix.row(i).pairwise_product(self.code_matrix.row(j)) for i in range(0,self.k_code) for j in range(i,self.k_code)])
         square_code_density = square_code_matrix.density()
         S_density = float(square_code_density) * self.n_code * self.r / self.ncols
@@ -251,7 +267,7 @@ class Instance:
         _, nrows, ncols = self.conditioning_functions[conditioning]()
         
         if os.path.exists(self.path + "/" + solution_file + ".bin"):
-            # ker is a sage matrix
+            # ker is a sage matrix with 64 vectors in columns notation
             ker = solution_from_bin(self.path, solution_file, nrows, ncols)
 
             solution = False
@@ -320,6 +336,7 @@ class Instance:
     # TODO: - **kwargs
     #       - conditioning
     #       - no cloning or copy
+    #       - match / case
     def run(self, conditioning=ConditioningType.RAW):
         print(f"{bcolors.BOLD}### Run{bcolors.ENDC}")
         matrix_file, solution_file = self.get_files_names(conditioning)
@@ -413,6 +430,7 @@ def hamming_4_8():
     i.set_code_matrix(G)
     i.construct_matrix()
     matrix_to_bin(i.path,"Sraw",i.Sraw)
+    
     #test = matrix_to_sage(i.Sraw, i.nrows, i.ncols)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
@@ -607,10 +625,10 @@ def test_1():
 
 # h3 = hamming_3()
 # h4 = hamming_4()
-h48 = hamming_4_8()
+#h48 = hamming_4_8()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
 # goppa= goppa_2_10_9_s34()
-#goppa= goppa_2_10_10_s40()
+goppa= goppa_2_10_10_s40()

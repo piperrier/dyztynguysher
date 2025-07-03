@@ -1,11 +1,13 @@
 import struct
 import numpy as np
-
+import io
 from sage.rings.finite_rings.finite_field_constructor import GF
 from sage.matrix.special import zero_matrix
 from sage.matrix.constructor import matrix
 
 from utils import bcolors
+
+### ndarray of ndarray ->
 
 def matrix_to_sage(matrix, nrows, ncols):
     # works with list of list, list of ndarray and ndarray of ndarray
@@ -27,6 +29,20 @@ def matrix_to_bin(path , name, matrix):
 
             progress_percentage = float(irow) / float(len(matrix)) * 100
             print(f"Writing matrix: {progress_percentage:.2f}%", end="\r", flush=True)
+
+
+# FIXME: data_queue ending
+def matrix_to_bin_queue(path, name, data_queue):
+    try:
+        with open(path + "/" + name + ".bin", 'wb') as f:
+            with io.BufferedWriter(f, buffer_size=1_074_000_000) as buffered_writer:  # 1 Gibibyte buffer
+                while True:
+                    block_data = data_queue.get()
+                    if block_data is None:  # Check for the signal that computation is done
+                        break
+                    buffered_writer.write(block_data)
+    except Exception as e:
+        print(f"Error in writing thread: {e}")
 
 
 def matrix_from_bin(path, name, nrows):

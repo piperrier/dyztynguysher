@@ -1,6 +1,17 @@
 import numpy as np
 
+
+from enum import Enum
 from abc import ABC, abstractmethod
+
+
+class ConditioningType(Enum):
+    RAW = 'raw'
+    # BLOCK1 = 'block1'
+    RANDOMPAD= 'randompad'
+
+
+####################################
 
 
 class Conditioning(ABC):
