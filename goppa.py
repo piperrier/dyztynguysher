@@ -1,11 +1,10 @@
-#import sage.coding.codes_catalog as codes
+import sage.coding.codes_catalog as codes
 import random
 
 from sage.rings.finite_rings.finite_field_constructor import GF
 from sage.matrix.constructor import matrix
 from sage.misc.functional import rank
 from sage.combinat.permutation import Permutation
-from sage.misc.prandom import random
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
 
@@ -15,8 +14,8 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 # s  the amount of shortening
 
 def goppa_short(q, m, t, s):
-    F = GF(2)
-    n = 2**m
+    F = GF(q)
+    n = q**m
     #K.<b> = F.extension(m)
     K = F.extension(m, names=('b',)); (b,) = K._first_ngens(1)
 
