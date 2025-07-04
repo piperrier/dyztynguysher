@@ -1,6 +1,6 @@
 import math
 import numpy as np
-import struct
+import random
 
 from numba import njit, types
 from numba.extending import overload
@@ -21,7 +21,7 @@ def jit_comb(n, k):
             return res
         return comb_impl
 
-# OK
+
 @njit
 def combination_at_index(i, k, n):
     result = []
@@ -35,7 +35,6 @@ def combination_at_index(i, k, n):
     return result
 
 
-# OK
 @njit
 def index_of_combination(combinaison, n):
     k = combinaison.size
@@ -46,64 +45,6 @@ def index_of_combination(combinaison, n):
         prev = combinaison[i]
     return index
 
-"""
-@njit
-def index_to_base_coker(index, k, r):
-    elt = []
-
-    cursor = 0
-    _cursor = 0
-
-    # first element
-    l1 = 0
-
-    lr = l1 + r - 1
-
-    while cursor <= index:
-        _cursor = cursor
-        for i in range(lr, k):
-            cursor += (i+1)*math.comb(i - l1 - 1, r - 2)
-
-        l1 += 1
-        lr += 1
-
-    l1 -= 1
-    lr -= 1
-    cursor = _cursor
-    elt.append(l1)
-
-    # loop for 2nd to (r-1)-th element
-    for p in range(1, r-1):
-        lp = elt[-1] + 1
-        lr = lp + r - (p+1)
-    
-        while cursor <= index:
-            _cursor = cursor
-            for i in range(lr, k):
-                cursor += (i+1)*math.comb(i - lp - 1, r - p - 2)
-            lp += 1
-            lr += 1
-
-        lp -= 1
-        lr -= 1
-        cursor = _cursor
-
-        elt.append(lp)
-
-    # last element, r-th
-    lr = elt[-1] + 1
-    while cursor<=index and lr < k:
-        cursor += lr+1
-        lr +=1 
-    lr -= 1
-    cursor -= (lr+1)
-    elt.append(lr)
-
-    #tensor element
-    elt.append(index - cursor)
-    
-    return elt
-"""
 
 @njit
 def index_to_base_coker(index, k, r):
@@ -124,9 +65,8 @@ def index_to_base_coker(index, k, r):
     return elt
 
 
-
 ##################################
-
+# Row operation
 
 @njit
 def diff_supp(v,G,r):
@@ -147,41 +87,34 @@ def diff_supp(v,G,r):
     return res
 
 
+@njit
+def random_row(ncols, weight):    
+    row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
+    row.sort()
+    return row
+
+
 ##################################
 
 
-def koszul_cohom(row_begin, row_end, G, r):
+def koszul_cohom(nrows, ncols, G, r):
     """
-    Computes the image of the cokernel elements between (row_begin and row_end(exluded))
+    Computes the image of the cokernel elements between row_begin and row_end(exluded)
     This function is used to computed the image of the cohomology
     """
-    #print("\n### Const S")
     # Initialize an empty list to store the results
     S_coker = []
 
-    for i in range(row_begin, row_end):
+    for i in range(nrows):
         # Compute the image for each element of the base (each row)
         diff_row = diff_supp(i, G, r)
         S_coker.append(diff_row)
-        progress_percentage = round(float(i)/row_end * 100,2)
+        progress_percentage = round(float(i)/nrows * 100,2)
         print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
 
     return np.array(S_coker, dtype=np.ndarray)
 
 
-def koszul_cohom_queue(row_begin, row_end, G, r, data_queue):
-    try:
-        for i in range(row_begin, row_end):
-            row = diff_supp(i, G, r)
-            data_queue.put(struct.pack('<I', len(row)))
-            data_queue.put(row.tobytes())
-            progress_percentage = round(float(i)/row_end * 100,2)
-            print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
-
-        data_queue.put(None)  # Signal that computation is done
-    except Exception as e:
-        print(f"Error in computation thread: {e}")
-        data_queue.put(None)  # Ensure the writing thread can exit
 
 if __name__ == '__main__':
     import timeit
@@ -235,9 +168,9 @@ if __name__ == '__main__':
 
     S = koszul_cohom(0, nrows, G, r)
 
-    #from matrix_bin import *
-    #test = matrix_to_sage(S, nrows)
+    for i in range(15):
+        row = random_row(15, 5)
+        print(row)
 
-
-    time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
-    print(f"Time for Koszul: {time:.2f} sec")
+    #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
+    #print(f"Time for Koszul: {time:.2f} sec")

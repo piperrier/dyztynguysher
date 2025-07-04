@@ -1,4 +1,3 @@
-import random
 import timeit
 
 
@@ -9,10 +8,7 @@ import shutil
 import numpy as np
 import queue
 import threading
-import io
 
-from enum import Enum
-from copy import copy
 from utils import *
 from goppa import *
 from matrix_bin import *
@@ -32,8 +28,6 @@ from sage.rings.finite_rings.finite_field_constructor import GF
 
 
 #from sage.all import *
-
-
 
 
 class Instance:
@@ -62,24 +56,15 @@ class Instance:
 
         # matrix system and sol
         self.code_matrix = None
-        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage
         self.nrows = binomial(self.k_code,self.r+1) * self.r + binomial(self.k_code,self.r) * self.r # dim of cokernel
         self.ncols = self.n_code * binomial(self.k_code,self.r-1) # dim of arrival space
+        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage, for very matrix we don't fully construct it, and prefer to write it in memory
         # self.ker_raw = None
 
         # dir / path
         self.current_dir = os.path.abspath(os.curdir)
         self.instance_dir = f"instance/{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
         self.path = self.current_dir + "/" +self.instance_dir
-
-        # TODO: refactor, not clean
-        # conditioning
-        self.conditioning_functions = {
-            ConditioningType.RAW: self.raw,
-            # ConditioningType.BLOCK1: self.block1,
-            # ConditioningType.RANDOMPAD: self.RandomRawPad,
-            ConditioningType.RANDOMPAD: self.randompad,
-        }
         
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -111,15 +96,23 @@ class Instance:
         f"lingen: time={(m+n)*self.ncols*logcol*(m+n+logcol):.2E} space={(m+n)*self.ncols:.2E}"))
         
 
-    # FIXME: self.Sraw != None
+
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
         print(self)
         print("\n")
-        # if self.Sraw != None:
-        matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-        P = matrix_plot(matrix_to_sage(matrix, nrows, ncols), marker=',', markersize='5')
+        
+        matrix_file, _ = self.get_files_names(conditioning)
+
+        match conditioning:
+            case ConditioningType.RAW:
+                nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
+            case ConditioningType.RANDOMPAD:
+                nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
+        
+        matrix = sage_from_bin(self.path, matrix_file, nrows, ncols)
+        
+        P = matrix_plot(matrix, marker=',', markersize='5')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
-        # else : print("S not defined")
 
 
     def get_files_names(self, conditioning):
@@ -141,26 +134,39 @@ class Instance:
     def construct_matrix(self):
         """
         Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file.
-        Don't use this function for large matrices (5>GB)
+        Don't use this function for large matrices (3>GB)
         """
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
         else :
             print(f"{bcolors.BOLD}### Constructing the matrix of the system {self.name}{bcolors.ENDC}")
-            Sraw = koszul_cohom(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r))
+            Sraw = koszul_cohom(int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r))
             self.Sraw = Sraw
 
-    # TODO: 
-    def construct_and_write_matrix(self):
+
+    def construct_and_write_matrix(self, conditioning):
         """
-        Construct the whole matrix block by block and write in a file in a mean time
-        Prefer this function for large matrices (5>GB)
+        Construct the whole matrix block by block and write in a file in the mean time
+        Prefer this function for large matrices (3>GB)
         """
-        #pass
-        #matrix_name, _ = self.get_files_names()
+        if self.code_matrix == None:
+            raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
+        
+        matrix_name, _ = self.get_files_names(conditioning)
         data_queue = queue.Queue()
-        compute_thread  = threading.Thread(target=koszul_cohom_queue, args=(int(0), int(self.nrows), np.array(self.code_matrix, dtype=int), int(self.r), data_queue))
-        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.path, "Aq", data_queue))
+
+        match conditioning:
+            case ConditioningType.RAW:
+                func = Raw.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+            
+            case ConditioningType.RANDOMPAD:
+                func = RandomRowPad.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+                
+
+        compute_thread  = threading.Thread(target=func, args=arg)
+        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.path, matrix_name, data_queue))
 
         compute_thread.start()
         write_thread.start()
@@ -168,6 +174,7 @@ class Instance:
         compute_thread.join()
         write_thread.join()
         print("Matrix computation and writing completed.")
+
 
     def size(self, r_min=None, r_max=None):
         """
@@ -183,9 +190,9 @@ class Instance:
             print(f"b{r}_{r+1}: {nrows} x {ncols}")
             
 
-    # WARNING: Not the exact density of the matrix representing the system but it should be close to the real one
+    # WARNING! Not the exact density of the matrix representing the system but it should be close to the real one
     # Note that the row density is equal to the matrix density
-    def density(self):
+    def density(self)->float:
         """
         Approximate density of the koszul cohomology matrix
         """        
@@ -194,98 +201,41 @@ class Instance:
         S_density = float(square_code_density) * self.n_code * self.r / self.ncols
         return S_density
 
-
-#################################
-### Conditioning
-#################################
-    # TODO: - speed up conditioning!
-    #       - use numba ?
-
-    # FIXME: -adapt to matrix format
-
-
-    def raw(self):
-        print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
-        # weight, dst, row_dst = density(self.Sraw, self.nrows, self.ncols)
-        # print(f"rows x cols: {self.nrows} x {self.ncols}")
-        # density_pretty(weight, dst, row_dst)
-        return (copy(self.Sraw), self.nrows, self.ncols)
-
-
-    def block1(self):
-        print(f"{bcolors.BOLD}### Block conditioning{bcolors.ENDC}")
-        row_pad =  ceil(float(self.nrows)/64)*64 - self.nrows
-        print(f"Padding {row_pad} rows")
-        matrix = copy(self.Sraw)
-
-        for j in range(row_pad-1):
-            matrix.append([self.ncols + j,self.ncols + ZZ.random_element(j+1,row_pad)])
-        matrix.append([self.ncols + row_pad-1])
-        
-        matrix_nrows = self.nrows + row_pad
-        matrix_ncols = self.ncols + row_pad
-        # weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
-        # print(f"rows x cols: {matrix_nrows} x {matrix_ncols}\nweight:{weight}\ndensity:{dst:.3f}%\nrow density:{row_dst:.3f}%")
-        return (matrix, matrix_nrows, matrix_ncols)
-
-
-    # FIXME assert
-    def randompad(self, row_weight=968):
-        print(f"{bcolors.BOLD}### Random row pad conditioning{bcolors.ENDC}")
-        
-        row_pad =  self.ncols - self.nrows
-        assert row_pad >=0 
-        print(f"Padding {row_pad} rows with {row_weight} elements")
-        padding= np.empty(row_pad, dtype=np.ndarray)
-
-        rng = np.random.default_rng()
-
-        for j in range(row_pad): 
-            row = rng.choice(np.arange(self.ncols, dtype='uint32'), size=row_weight, replace=False)
-            row.sort()
-            padding[j] = row
-
-        matrix = np.append(self.Sraw, padding)
-        matrix_nrows = self.nrows + row_pad
-        matrix_ncols = self.ncols
-        # weight, dst, row_dst = density(matrix, matrix_nrows, matrix_ncols)
-        # print(f"rows x cols: {matrix_nrows} x {matrix_ncols}")
-        # density_pretty(weight, dst, row_dst)
-        return (matrix, matrix_nrows, matrix_ncols)
-
         
 #################################
 ### Verifications
 #################################
 
 
-    # FIXME self.nrows == nrows might be buggy
-    def check_solution(self, conditioning=ConditioningType.RAW):
+    # WARNING! self.nrows == nrows might be buggy, but this is not meant to be use in this scenario since there is no irrelevant vector. So we let the weakness
+    def check_solution(self, conditioning):
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
-        _, solution_file = self.get_files_names(conditioning)
-        # nrows, ncols = self.conditioning_functions[conditioning].get_dim(self.nrows, self.ncols)
-        _, nrows, ncols = self.conditioning_functions[conditioning]()
         
-        if os.path.exists(self.path + "/" + solution_file + ".bin"):
-            # ker is a sage matrix with 64 vectors in columns notation
-            ker = solution_from_bin(self.path, solution_file, nrows, ncols)
+        _, solution_file = self.get_files_names(conditioning)
 
-            solution = False
+        match conditioning:
+            case ConditioningType.RAW:
+                nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
+            case ConditioningType.RANDOMPAD:
+                nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
 
-            relevant_base = vector([any(c) for c in ker[:self.nrows,:].columns()])
-            irrelevant_base = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
+        # ker is a sage matrix with 64 (for now) vectors in columns notation
+        ker = solution_from_bin(self.path, solution_file, nrows, ncols)
 
-            print(relevant_base.pairwise_product(irrelevant_base))
-            print(sum(relevant_base.pairwise_product(irrelevant_base)))
-            solution = any(relevant_base.pairwise_product(irrelevant_base))
+        solution = False
 
-            if solution: 
-                print(f"{bcolors.OKGREEN}The solution is valid{bcolors.ENDC}")
-            else:
-                print(f"{bcolors.FAIL}The solution is not valid{bcolors.ENDC}")
+        relevant_base = vector([any(c) for c in ker[:self.nrows,:].columns()])
+        irrelevant_base = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
+
+        dim = sum(relevant_base.pairwise_product(irrelevant_base))
+        solution = any(relevant_base.pairwise_product(irrelevant_base))
+
+        if solution: 
+            print(f"{bcolors.OKGREEN}The solution is valid, found a vector space of dim {dim}{bcolors.ENDC}")
+        else:
+            print(f"{bcolors.FAIL}The solution is not valid, dim is {dim}{bcolors.ENDC}")
             
-            return ker
-
+        return ker
         
 
 #################################
@@ -333,32 +283,19 @@ class Instance:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
 
-    # TODO: - **kwargs
-    #       - conditioning
-    #       - no cloning or copy
-    #       - match / case
     def run(self, conditioning=ConditioningType.RAW):
         print(f"{bcolors.BOLD}### Run{bcolors.ENDC}")
+        
         matrix_file, solution_file = self.get_files_names(conditioning)
 
-        # build the matrix of the system if it does not exist
-        # if not os.path.isfile(self.path + "/" + matrix_file):
-            # print(self.conditioning_functions[conditioning])
-            # matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-            # matrix_to_bin(self.path, matrix_file, matrix)
-        # print(self.conditioning_functions[conditioning])
-        matrix, nrows, ncols = self.conditioning_functions[conditioning]()
-        matrix_to_bin(self.path, matrix_file, matrix)
-
+        if not os.path.exists(self.path + "/" + matrix_file + ".bin"):
+            raise Exception(f"{self.path}/{matrix_file}.bin doesn't exist !")
             
         self.scan(matrix_file)
         self.balancing(matrix_file)
         self.bwc(matrix_file)
         self.retrieve_solution(solution_file)
-        
-        # nrows_sol = ceil(float(max(nrows,ncols))/64)*64
-        # solution_from_bin(self.path, solution_file, nrows_sol, 64)
-        
+                
         self.clear_idir()
         Instance.clear_wdir()
         
@@ -428,8 +365,6 @@ def hamming_4_8():
 
     # the three following need to be done only once
     i.set_code_matrix(G)
-    i.construct_matrix()
-    matrix_to_bin(i.path,"Sraw",i.Sraw)
     
     #test = matrix_to_sage(i.Sraw, i.nrows, i.ncols)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
@@ -625,10 +560,10 @@ def test_1():
 
 # h3 = hamming_3()
 # h4 = hamming_4()
-#h48 = hamming_4_8()
+h48 = hamming_4_8()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
 # goppa= goppa_2_10_9_s34()
-goppa= goppa_2_10_10_s40()
+#goppa= goppa_2_10_10_s40()

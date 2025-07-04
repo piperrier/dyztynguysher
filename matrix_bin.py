@@ -18,7 +18,7 @@ def matrix_to_sage(matrix, nrows, ncols):
     return S_sage
 
 
-def matrix_to_bin(path , name, matrix):
+def matrix_to_bin(path, name, matrix):
     print(f"Writing the matrix {name} in a bin:", flush=True)
 
     with open(path + "/"+ name  +".bin", 'wb') as f:
