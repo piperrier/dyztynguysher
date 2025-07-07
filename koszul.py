@@ -65,6 +65,23 @@ def index_to_base_coker(index, k, r):
     return elt
 
 
+def base_to_index_supp(elt,k,r):
+    index = 0
+
+    #p=1
+    for l in range(elt[0]):
+        index += (r-1) * math.comb(k-l,r-1+1)+(l+1)*math.comb(k-l-1,r-1)
+    #p suivants
+    
+    for p in range(2,r+1):
+        for l in range(elt[p-2]+1,elt[p-1]):
+            index += (r-p) * math.comb(k-l,r-p+1)+(l+1)*math.comb(k-l-1,r-p)
+    
+    
+    return index + elt[r]
+
+
+
 ##################################
 # Row operation
 

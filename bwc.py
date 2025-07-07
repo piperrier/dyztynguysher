@@ -71,16 +71,17 @@ class Instance:
 
 
     def __repr__(self):
+        density = self.density()
+
         row_red=self.nrows-self.r*binomial(self.k_code, self.r)
         col_red=self.ncols - self.r*binomial(self.k_code, self.r) - (self.r-1)*binomial(self.k_code,self.r-1)
-        space_red = (row_red * col_red * self.density() + row_red)*4*10**-9
-        
+        space_red = (row_red * col_red * density + row_red)*4*10**-9        
 
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
         thr={self.thr}\n\
         nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.r*binomial(self.k_code, self.r) + (self.r-1)*binomial(self.k_code,self.r-1)}\n\
-        density={round(self.density()*100,5)}% weight={self.ncols * self.nrows * self.density():.0f} space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
+        density={round(density*100,5)}% weight={self.ncols * self.nrows * density:.0f} space={(self.ncols * self.nrows * density + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
         path={self.path}"
 
 
@@ -509,7 +510,34 @@ def goppa_2_10_10_s40():
     # print(eq)
     
     return i
+
+
+def goppa_2_12_64_s377():
+    print("1")
+    i = Instance("goppa_2_12_64_s377", 3111, 391, 50, "64", "64", "4x3" )
+
+    print("2")
+    G = goppa_short(2, 12, 64, 377)
     
+    print("3")
+    i.set_code_matrix(G)
+
+    return i
+
+
+def goppa_2_12_64_s377_beta():
+    print("1")
+    i = Instance("goppa_2_12_64_s377", 3111, 391, 385   , "64", "64", "4x3" )
+
+    print("2")
+    G = goppa_short(2, 12, 64, 377)
+    
+    print("3")
+    i.set_code_matrix(G)
+
+    return i
+
+
 def test_0():
     i = Instance("test",0,0,0,"64", "64", "3x4")
     i.nrows = 100
@@ -560,10 +588,12 @@ def test_1():
 
 # h3 = hamming_3()
 # h4 = hamming_4()
-h48 = hamming_4_8()
+#h48 = hamming_4_8()
 # bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
 # goppa = goppa_2_8_6_s18()
 # goppa= goppa_2_10_9_s34()
 #goppa= goppa_2_10_10_s40()
+#goppa= goppa_2_12_64_s377()
+goppa= goppa_2_12_64_s377_beta()
