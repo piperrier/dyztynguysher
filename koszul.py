@@ -7,6 +7,11 @@ from numba.extending import overload
 from numba.core.errors import TypingError
 
 
+#################################
+### Support functions 
+#################################
+
+
 @overload(math.comb)
 def jit_comb(n, k):
     if not isinstance(n, types.Integer) or not isinstance(k, types.Integer):
@@ -81,19 +86,20 @@ def base_to_index_supp(elt,k,r):
     return index + elt[r]
 
 
+#################################
+### Image of the homology a a basis element (used for conditioning)
+#################################
 
-##################################
-# Row operation
 
+# RAW conditioning
 @njit
-def diff_supp(v,G,r):
+def diff_supp(elem, G, r):
     k, n = G.shape
-    
+
     # we init with an empty array of uint32 for typing system of numba
     init = [np.uint32(0) for _ in range(0)]
     res = np.array(init, dtype='uint32')
 
-    elem = index_to_base_coker(v,k,r)
     l = elem.pop() #indice de la ligne de G correspondant
     for j in range(r):
         c = G[l, :] * G[elem[j], :]
@@ -104,6 +110,7 @@ def diff_supp(v,G,r):
     return res
 
 
+# RANDOMPAD Conditioning
 @njit
 def random_row(ncols, weight):    
     row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
@@ -111,7 +118,29 @@ def random_row(ncols, weight):
     return row
 
 
-##################################
+# RED Conditioning
+@njit
+def diff_supp_red(elem: list, G:np.ndarray, r:int) -> np.ndarray:
+    k, n = G.shape
+    
+    # we init with an empty array of uint32 for typing system of numba
+    init = [np.uint32(0) for _ in range(0)]
+    res = np.array(init, dtype='uint32')
+
+    l = elem.pop() #indice de la ligne de G correspondant
+    for j in range(r):
+        c = G[l, :] * G[elem[j], :] #only the n-k last columns
+        c = c[k:]
+        index = index_of_combination(np.array(elem[:j]+elem[j+1:]),k)*(n-k)
+        res = np.append(res, (np.nonzero(c)[0] + index).astype('uint32'))   
+
+    res.sort()
+    return res
+
+
+#################################
+### Homology functions (used for test)
+#################################
 
 
 def koszul_cohom(nrows, ncols, G, r):
@@ -120,11 +149,13 @@ def koszul_cohom(nrows, ncols, G, r):
     This function is used to computed the image of the cohomology
     """
     # Initialize an empty list to store the results
+    k, n = G.shape
     S_coker = []
 
     for i in range(nrows):
         # Compute the image for each element of the base (each row)
-        diff_row = diff_supp(i, G, r)
+        elem = index_to_base_coker(i, k, r)
+        diff_row = diff_supp(elem, G, r)
         S_coker.append(diff_row)
         progress_percentage = round(float(i)/nrows * 100,2)
         print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
@@ -132,10 +163,30 @@ def koszul_cohom(nrows, ncols, G, r):
     return np.array(S_coker, dtype=np.ndarray)
 
 
+def koszul_cohom_red(nrows, ncols, G, r):
+    """
+    Computes the image of the cokernel elements between row_begin and row_end(exluded)
+    This function is used to computed the image of the cohomology
+    """
+    # Initialize an empty list to store the results
+    k, n = G.shape
+    S_coker = []
+
+    for i in range(nrows):
+        # Compute the image for each element of the base (each row)
+        elem = index_to_base_coker(i, k, r)
+        if elem[r] not in elem[0:r]:    # remove row with pivots
+            diff_row = diff_supp_red(elem, G, r)
+            S_coker.append(diff_row)
+        progress_percentage = round(float(i)/nrows * 100,2)
+        print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+
+    return np.array(S_coker, dtype=np.ndarray)
 
 if __name__ == '__main__':
     import timeit
     import itertools
+    from matrix_bin import *
 
     """
     k = 30
@@ -153,14 +204,42 @@ if __name__ == '__main__':
     print(coker==test)
     """
     
-    #G = np.array([[1, 0, 0, 0, 1, 0, 1],
-    #             [0, 1, 0, 0, 1, 1, 0],
+    #G = np.array([[1, 0, 0, 0, 0, 1, 1],
+    #             [0, 1, 0, 0, 1, 0, 1],
     #             [0, 0, 1, 0, 1, 1, 0],
-    #            [0, 0, 0, 1, 0, 1, 1]], 
+    #             [0, 0, 0, 1, 1, 1, 1]], 
     #             dtype=int)
     #nrows = 20
+    #ncols = 28
+    #k = 4
     #r = 2
 
+    G = np.array(
+        [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1]], dtype=int)
+    
+
+    G[:,[10,11]] = G[:,[11,10]]
+    
+    
+    nrows = 1760
+    ncols = 4950
+    
+    k = 11
+    r = 8
+    
+    
+
+    """
     G = np.array (
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1],
@@ -181,13 +260,28 @@ if __name__ == '__main__':
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]],
         dtype=int)
     nrows = 92820
+    ncols = 111860
+    k=17
     r = 5
+    """
 
-    S = koszul_cohom(0, nrows, G, r)
+    #S = koszul_cohom(nrows, ncols, G, r)
+    S_red = koszul_cohom_red(nrows, ncols, G, r)
 
-    for i in range(15):
-        row = random_row(15, 5)
-        print(row)
+
+    #test = matrix_to_sage(S, nrows,ncols)
+    test_red = matrix_to_sage(S_red, nrows-r*math.comb(k,r),ncols-k*math.comb(k,r-1))
+    
+    #print(test.dimensions())
+    #ker = test.kernel()
+    #print(ker.dimension())
+
+
+    print("")
+    
+    print(test_red.dimensions())
+    ker_red = test_red.kernel()
+    print(ker_red.dimension())
 
     #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     #print(f"Time for Koszul: {time:.2f} sec")

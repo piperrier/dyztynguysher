@@ -58,7 +58,7 @@ class Instance:
         self.code_matrix = None
         self.nrows = binomial(self.k_code,self.r+1) * self.r + binomial(self.k_code,self.r) * self.r # dim of cokernel
         self.ncols = self.n_code * binomial(self.k_code,self.r-1) # dim of arrival space
-        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage, for very matrix we don't fully construct it, and prefer to write it in memory
+        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage, for very large matrix we don't construct it, and prefer to write it in memory
         # self.ker_raw = None
 
         # dir / path
@@ -109,10 +109,12 @@ class Instance:
                 nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
             case ConditioningType.RANDOMPAD:
                 nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
-        
+            case ConditioningType.RED:
+                nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+
         matrix = sage_from_bin(self.path, matrix_file, nrows, ncols)
         
-        P = matrix_plot(matrix, marker=',', markersize='5')
+        P = matrix_plot(matrix, marker=',')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
 
 
@@ -132,20 +134,44 @@ class Instance:
         self.code_matrix = matrix
         
     
-    def construct_matrix(self):
+    def construct_and_collect_matrix(self, conditioning=ConditioningType.RAW):
         """
         Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file.
         Don't use this function for large matrices (3>GB)
         """
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
-        else :
-            print(f"{bcolors.BOLD}### Constructing the matrix of the system {self.name}{bcolors.ENDC}")
-            Sraw = koszul_cohom(int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r))
-            self.Sraw = Sraw
+        
+        data_queue = queue.Queue()
+        data_container = []
+
+        match conditioning:
+            case ConditioningType.RAW:
+                func = Raw.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+
+            case ConditioningType.RANDOMPAD:
+                func = RandomRowPad.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+
+            case ConditioningType.RED:
+                func = Red.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+
+        compute_thread  = threading.Thread(target=func, args=arg)
+        collect_thread  = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
+
+        compute_thread.start()
+        collect_thread.start()
+
+        compute_thread.join()
+        collect_thread.join()
+
+        print("Matrix computation and collection completed.")
+        self.Sraw = np.array(data_container, dtype=np.ndarray)
 
 
-    def construct_and_write_matrix(self, conditioning):
+    def construct_and_write_matrix(self, conditioning=ConditioningType.RAW):
         """
         Construct the whole matrix block by block and write in a file in the mean time
         Prefer this function for large matrices (3>GB)
@@ -164,6 +190,11 @@ class Instance:
             case ConditioningType.RANDOMPAD:
                 func = RandomRowPad.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+            
+            case ConditioningType.RED:
+                func = Red.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+
                 
 
         compute_thread  = threading.Thread(target=func, args=arg)
@@ -331,17 +362,15 @@ def hamming_3():
     C = codes.HammingCode(GF(2),3)
     G = C.generator_matrix()
 
-    G = matrix(GF(2),
-    [[1, 0, 0, 0, 1, 0, 1],
-    [0, 1, 0, 0, 1, 1, 0],
-    [0, 0, 1, 0, 1, 1, 0],
-    [0, 0, 0, 1, 0, 1, 1]])
+    #G = matrix(GF(2),
+    #[[1, 0, 0, 0, 1, 0, 1],
+    #[0, 1, 0, 0, 1, 1, 0],
+    #[0, 0, 1, 0, 1, 1, 0],
+    #[0, 0, 0, 1, 0, 1, 1]])
 
-
-    # the three following need to be done only once
     i.set_code_matrix(G)
-    i.construct_matrix()
-    matrix_to_bin(i.path,"Sraw",i.Sraw)
+    #i.construct_and_collect_matrix()
+    #matrix_to_bin(i.path,"Sraw",i.Sraw)
 
     return i
 
@@ -351,26 +380,26 @@ def hamming_4():
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
 
-    # the three following need to be done only once
     i.set_code_matrix(G)
-    i.construct_matrix()
+    i.construct_and_collect_matrix()
     matrix_to_bin(i.path,"Sraw",i.Sraw)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
-    
+
+
 def hamming_4_8():
     i = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
 
-    # the three following need to be done only once
     i.set_code_matrix(G)
     
     #test = matrix_to_sage(i.Sraw, i.nrows, i.ncols)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
     return i
+
 
 def bklc_5():
     i = Instance("bklc",47,17,5, "128", "128", "3x4")
@@ -394,11 +423,12 @@ def bklc_5():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
     
     i.set_code_matrix(G)
-    i.construct_matrix()
-    matrix_to_bin(i.path,"Sraw",i.Sraw)
+    i.construct_and_collect_matrix()
+    # matrix_to_bin(i.path,"Sraw",i.Sraw)
     # i.Sraw = matrix_from_bin(i.path, "Sraw", i.nrows)
 
     return i
+
 
 def bklc_4():
     i = Instance("bklc",47,17,4, "512", "64", "3x4")
@@ -426,6 +456,24 @@ def bklc_4():
     # i.S_to_bin()
     
     return i
+
+
+def goppa_2_3_2():
+    i = Instance("goppa_2_3_2", 8, 6, 3, "128", "128", "4x3" )
+    #G = goppa_short(2,3,2,0)
+    G = matrix(GF(2),
+               [[1,0,0,0,0,0,0,1],
+                [0,1,0,0,0,0,1,1],
+                [0,0,1,0,0,0,0,1],
+                [0,0,0,1,0,0,1,1],
+                [0,0,0,0,1,0,1,1],
+                [0,0,0,0,0,1,1,0]]
+               )
+
+    i.set_code_matrix(G)
+
+    return i
+
 
 def goppa_2_8_6_s18():
     i = Instance("goppa_2_8_6", 238, 30, 3, "128", "128", "4x3" )
@@ -462,7 +510,7 @@ def goppa_2_8_6_s18():
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1]])
     
     i.set_code_matrix(G)
-    i.construct_matrix()
+    i.construct_and_write_matrix(ConditioningType.RED)
 
     
     # test=True
@@ -586,14 +634,15 @@ def test_1():
     
     return i
 
-# h3 = hamming_3()
+#h3 = hamming_3()
 # h4 = hamming_4()
-#h48 = hamming_4_8()
-# bklc = bklc_5()
+h48 = hamming_4_8()
+#bklc = bklc_5()
 # test0 = test_0()
 # test1 = test_1()
-# goppa = goppa_2_8_6_s18()
+#goppa = goppa_2_3_2()
+#goppa = goppa_2_8_6_s18()
 # goppa= goppa_2_10_9_s34()
 #goppa= goppa_2_10_10_s40()
 #goppa= goppa_2_12_64_s377()
-goppa= goppa_2_12_64_s377_beta()
+#goppa= goppa_2_12_64_s377_beta()
