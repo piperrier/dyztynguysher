@@ -1,1 +1,0 @@
-/home/pperrier/Documents/block_wiedemann/cado-nfs/build/stagiaire-perrier/ccwrap.pl -std=c99 -W -Wall -O2  -msse3 -mssse3 -msse4.1 -mpopcnt -mavx -mpclmul -mavx2 CMakeFiles/test_iceildiv.dir/test_iceildiv.c.o -o test_iceildiv   -L/usr/local/lib 

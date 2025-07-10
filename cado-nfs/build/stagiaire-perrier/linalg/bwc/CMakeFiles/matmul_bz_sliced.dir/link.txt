@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmatmul_bz_sliced.a CMakeFiles/matmul_bz_sliced.dir/matmul_facade.cpp.o "CMakeFiles/matmul_bz_sliced.dir/matmul-sliced.cpp.o"
-/usr/bin/ranlib libmatmul_bz_sliced.a

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmatmul_pz_basicp.a CMakeFiles/matmul_pz_basicp.dir/matmul_facade.cpp.o "CMakeFiles/matmul_pz_basicp.dir/matmul-basicp.cpp.o"
-/usr/bin/ranlib libmatmul_pz_basicp.a
