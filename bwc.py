@@ -99,6 +99,10 @@ class Instance:
 
 
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
+        """
+        Plot and print the matrix.
+        The matrix should be written in a .bin file before calling this function !
+        """
         print(self)
         print("\n")
         
@@ -173,7 +177,7 @@ class Instance:
 
     def construct_and_write_matrix(self, conditioning=ConditioningType.RAW):
         """
-        Construct the whole matrix block by block and write in a file in the mean time
+        Construct the whole matrix row by row and write in a file in the mean time through a buffer
         Prefer this function for large matrices (3>GB)
         """
         if self.code_matrix == None:
@@ -241,23 +245,31 @@ class Instance:
 
     # WARNING! self.nrows == nrows might be buggy, but this is not meant to be use in this scenario since there is no irrelevant vector. So we let the weakness
     def check_solution(self, conditioning):
+        """
+        When the padding is added, check that at least one vector of the kernel is all zero on the padding and non zero on the relevant elements.
+        """
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
         
         _, solution_file = self.get_files_names(conditioning)
 
         match conditioning:
-            case ConditioningType.RAW:
-                nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
             case ConditioningType.RANDOMPAD:
                 nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
+                padding = RandomRowPad.get_padding(self.nrows, self.ncols)
+            case ConditioningType.REDPAD:
+                nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+                padding = RedPad.get_padding(self.nrows, self.ncols, self.k_code, self.r)
+            case _:
+                print(f"No verification aivalable for the {conditioning} conditioning, maybe it's not needed or maybe you should add it")
+                return None
 
         # ker is a sage matrix with 64 (for now) vectors in columns notation
         ker = solution_from_bin(self.path, solution_file, nrows, ncols)
 
         solution = False
 
-        relevant_base = vector([any(c) for c in ker[:self.nrows,:].columns()])
-        irrelevant_base = vector([1-any(c) for c in ker[self.nrows:nrows,:].columns()])
+        relevant_base = vector([any(c) for c in ker[:-padding,:].columns()]) # remove padding
+        irrelevant_base = vector([1-any(c) for c in ker[-padding:,:].columns()]) # only padding
 
         dim = sum(relevant_base.pairwise_product(irrelevant_base))
         solution = any(relevant_base.pairwise_product(irrelevant_base))

@@ -21,10 +21,16 @@ class ConditioningType(Enum):
 class Conditioning(ABC):
     @abstractmethod
     def get_dim(nrows, ncols):
+        """
+        Size of the matrix outputed by format()
+        """
         pass
 
     @abstractmethod
     def format():
+        """
+        Compute the marix if the given formating
+        """
         pass
 
 
@@ -58,7 +64,11 @@ class RandomRowPad(Conditioning):
             raise Exception(f"Cannot add random rows to a matrix with more rows than columns, {nrows}>{ncols}")
         return ncols, ncols
 
-    
+
+    def get_padding(nrows, ncols):
+        return ncols - nrows
+
+
     def format(nrows, ncols, G, r, data_queue, weight):
         print(f"{bcolors.BOLD}### Randow Row Pad conditioning{bcolors.ENDC}")
         k, n = G.shape
@@ -109,11 +119,16 @@ class Red(Conditioning):
             print(f"Error in computation thread: {e}")
             data_queue.put(None)  # Ensure the writing thread can exit
 
-"""
+
 class RedPad(Conditioning):
     def get_dim(nrows, ncols, k, r):
         return (nrows - r * binomial(k, r), ncols - k * binomial(k, r-1))
-    
+
+
+    def get_padding(nrows, ncols,k, r):
+        return (ncols - k * binomial(k, r-1)) - (nrows - r * binomial(k, r))
+
+
     def format(nrows, ncols, G, r, data_queue, weight):
         k, n = G.shape
         try:
@@ -142,4 +157,3 @@ class RedPad(Conditioning):
         except Exception as e:
             print(f"Error in computation thread: {e}")
             data_queue.put(None)  # Ensure the writing thread can exit
-"""
