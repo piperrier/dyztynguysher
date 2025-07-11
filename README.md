@@ -14,29 +14,34 @@
 
 3. Add `cado-nfs` to your path:
    ```bash
-    export PATH=<cado-dir>/build/<hostname>/linalg/bwc/$PATH
+    export PATH="$PATH:/<cado-dir>/build/<hostname>/linalg/bwc"
    ```
 
-4. Create a python env with: sage<=10.6, python>=3.12, numpy<=2.2, numba<=0.61  
-   We recomand using conda and using the environment.yml file.
+4. Create a python env with: sage<=10.6, python>=3.12, numpy<=2.2, numba<=0.61, gallois  
+   We provide an environment.yml file, with a conda environement called `syz`.
     ```bash
-    conda myenv create -f environment.yml           # Create environment from file
-    conda activate myenv                            # Activate environment
+    conda env create -f environment.yml             # Create the syz environment from file
+    conda activate syz                              # Activate syz environment
     ```
 
 ## Usage
 1. Activate the env
     ```bash
-    conda activate myenv
+    conda activate syz
     ```
-2. Create an instance
+2. On the sage interpreter, load `syz.py`
+    ```python
+    load("syz.py")
+    ```
+
+3. Create an instance
     ```python
     h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
     h48.set_code_matrix(G)
     ```
-3. Run the distinguisher
+4. Run the distinguisher
     ```python
     h48.construct_and_write_matrix(ConditioningType.RANDOMPAD)
     h48.run(ConditioningType.RANDOMPAD)

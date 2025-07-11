@@ -1,4 +1,4 @@
-name: sage
+name: syz
 channels:
   - conda-forge
   - https://repo.anaconda.com/pkgs/main
