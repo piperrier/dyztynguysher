@@ -2,9 +2,10 @@
 
 ## Description
 On veut utiliser l'agorithme de block Wiedemann pour trouver si la $r$-ième homologie suivante est nulle ou non :  
-$$
+
+```math
 \bigwedge^{r+1} S_1 \xrightarrow{d} \bigwedge^r S_1 \bigotimes C \xrightarrow{d'} \bigwedge^{r-1} S_1 \bigotimes \mathbf F^n
-$$
+```
 
 Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}(d)$ ayant pour base $\{ x_{l_1}\wedge \dots \wedge x_{l_r} \otimes c_l\ |\ l_1<\dots <l_r, l \leq l_r \}$ est nulle ou non. Pour cela on utilise block Wiedemann.
 ## Installation
