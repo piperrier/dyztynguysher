@@ -111,9 +111,12 @@ def diff_supp(elem, G, r):
 
 
 # RANDOMPAD Conditioning
-@njit
-def random_row(ncols, weight):    
-    row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
+#@njit
+def random_row(ncols, weight):
+    #row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
+    rng = np.random.default_rng()
+    row = rng.choice(np.arange(ncols, dtype='uint32'), size=weight, replace=False)
+
     row.sort()
     return row
 
@@ -188,6 +191,7 @@ if __name__ == '__main__':
     import itertools
     from matrix_bin import *
 
+    ### base
     """
     k = 30
     r = 5
@@ -203,6 +207,12 @@ if __name__ == '__main__':
     print("base eq")
     print(coker==test)
     """
+
+    ### randrow
+
+    #time = timeit.timeit(lambda: random_row(1_524_600, 722), number = 100)
+    #print(time)
+    #print("randrom",time)
     
     #G = np.array([[1, 0, 0, 0, 0, 1, 1],
     #             [0, 1, 0, 0, 1, 0, 1],
@@ -214,6 +224,7 @@ if __name__ == '__main__':
     #k = 4
     #r = 2
 
+    """
     G = np.array(
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
@@ -236,7 +247,7 @@ if __name__ == '__main__':
     
     k = 11
     r = 8
-    
+    """
     
 
     """
@@ -265,6 +276,7 @@ if __name__ == '__main__':
     r = 5
     """
 
+    """
     #S = koszul_cohom(nrows, ncols, G, r)
     S_red = koszul_cohom_red(nrows, ncols, G, r)
 
@@ -282,6 +294,6 @@ if __name__ == '__main__':
     print(test_red.dimensions())
     ker_red = test_red.kernel()
     print(ker_red.dimension())
-
+    """
     #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     #print(f"Time for Koszul: {time:.2f} sec")
