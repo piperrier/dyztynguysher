@@ -1,0 +1,11 @@
+name: syz
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - flask=3.1.1
+  - numba=0.61.2
+  - numpy=2.2.6
+  - python=3.12
+  - sage=10.6
+prefix: /home/pierre/anaconda3/envs/syz

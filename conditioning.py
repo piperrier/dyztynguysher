@@ -79,14 +79,14 @@ class RandomRowPad(Conditioning):
                 data_queue.put(row)
                 
                 progress_percentage = round(float(i)/ncols * 100,2)
-                print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
-
+                print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
+            
             for i in range(ncols - nrows):
                 row = random_row(ncols, weight)
                 data_queue.put(row)
                 
                 progress_percentage = round(float(nrows+i)/ncols * 100,2)
-                print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+                print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
             
             data_queue.put(None)  # Signal that computation is done
             print("\n")

@@ -65,6 +65,9 @@ class Instance:
         self.current_dir = os.path.abspath(os.curdir)
         self.instance_dir = f"instance/{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
         self.path = self.current_dir + "/" +self.instance_dir
+        #self.wdir = "/tmp/wdir"
+        self.wdir = "/nvme/pperrier-22/wdir"
+
         
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -307,9 +310,9 @@ class Instance:
         threads = (self.thr).split('x')
         thr = ''.join(threads)
 
-        subprocess.run("mkdir -p /tmp/wdir;         \
+        subprocess.run("mkdir -p " + self.wdir + ";         \
         bwc.pl :complete                            \
-        wdir=/tmp/wdir                              \
+        wdir=" + self.wdir + "                              \
         m=" + self.m + "                            \
         n=" + self.n + "                            \
         nullspace=left                              \
@@ -320,8 +323,8 @@ class Instance:
 
     def retrieve_solution(self, solution_file):
         print(f"{bcolors.BOLD}### Retrieving solution{bcolors.ENDC}")
-        if os.path.exists("/tmp/wdir/W"):
-            shutil.copy("/tmp/wdir/W", self.path + "/" + solution_file + ".bin")
+        if os.path.exists(self.wdir + "/W"):
+            shutil.copy(self.wdir + "/W", self.path + "/" + solution_file + ".bin")
             print(f"{bcolors.OKGREEN}Solution retrieved and placed in {self.instance_dir}{bcolors.ENDC}")
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
@@ -341,7 +344,7 @@ class Instance:
         self.retrieve_solution(solution_file)
                 
         self.clear_idir()
-        Instance.clear_wdir()
+        self.clear_wdir()
         
 
 #################################
@@ -349,8 +352,8 @@ class Instance:
 #################################
 
 
-    def clear_wdir():
-        subprocess.run("rm -r /tmp/wdir/*", shell=True)
+    def clear_wdir(self):
+        subprocess.run("rm -r" + self.wdir + "/*", shell=True)
     
 
     def clear_idir(self):
@@ -534,42 +537,9 @@ def goppa_2_8_6_s18():
     return i
 
 
-def goppa_2_10_9_s34():
-    i = Instance("goppa_2_10_9_s34", 990, 56, 3, "64", "64", "4x3" )
-    G = goppa_short(2,10,9,34)
-    
-    i.set_code_matrix(G)
-    # i.construct_matrix()
-    # i.Sraw = syst
-    i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
-    # matrix_to_bin(i.path,"Stest",i.Sraw)
-
-    # Stest = matrix_from_bin(i.path,"Stest", nrows = i.nrows)
-
-    # eq = np.all([np.array_equal(i.Sraw[j], Stest[j]) for j in range(Stest.size)])
-    # print(eq)
-    
-    return i
 
     
-def goppa_2_10_10_s40():
-    i = Instance("goppa_2_10_10_s40", 984, 60, 4, "64", "64", "4x3" )
-    G = goppa_short(2,10,10,40)
-    
-    i.set_code_matrix(G)
-    # i.construct_matrix()
-    # i.Sraw = syst
-    # i.Sraw = matrix_from_bin(i.path,"Sraw", nrows = i.nrows)
-    # matrix_to_bin(i.path,"Stest",i.Sraw)
 
-    # i.run(ConditioningType.RANDOMPAD)
-    
-    # Stest = matrix_from_bin(i.path,"Stest", nrows = i.nrows)
-
-    # eq = np.all([np.array_equal(i.Sraw[j], Stest[j]) for j in range(Stest.size)])
-    # print(eq)
-    
-    return i
 
 
 def goppa_2_12_64_s377():
