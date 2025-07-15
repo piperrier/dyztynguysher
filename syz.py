@@ -76,13 +76,13 @@ class Instance:
         density = self.density()
 
         row_red=self.nrows-self.r*binomial(self.k_code, self.r)
-        col_red=self.ncols - self.r*binomial(self.k_code, self.r) - (self.r-1)*binomial(self.k_code,self.r-1)
+        col_red=self.ncols - self.k_code*binomial(self.k_code, self.r-1)
         space_red = (row_red * col_red * density + row_red)*4*10**-9        
 
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
         thr={self.thr}\n\
-        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.r*binomial(self.k_code, self.r) + (self.r-1)*binomial(self.k_code,self.r-1)}\n\
+        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.k_code*binomial(self.k_code, self.r)}\n\
         density={round(density*100,5)}% weight={self.ncols * self.nrows * density:.0f} space={(self.ncols * self.nrows * density + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
         path={self.path}"
 
@@ -121,7 +121,7 @@ class Instance:
                 nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
 
             case ConditioningType.REDPAD:
-                nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+                nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
             
         matrix = sage_from_bin(self.path, matrix_file, nrows, ncols)
         

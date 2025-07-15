@@ -41,10 +41,13 @@ def hamming_4():
 def hamming_4_8(): #betti_8_9 = 34
     i = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
-    G = C.generator_matrix()
+    G = copy(C.generator_matrix())
+    
+    G[:,[10,11]] = G[:,[11,10]]
 
     i.set_code_matrix(G)
-    
+    print(i.code_matrix)    
+
     #test = matrix_to_sage(i.Sraw, i.nrows, i.ncols)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
 
@@ -226,12 +229,11 @@ def goppa_2_12_64_s377():
 # h4 = hamming_4()
 h48 = hamming_4_8()
 #bklc = bklc_5()
-# test0 = test_0()
-# test1 = test_1()
+
 #goppa = goppa_2_3_2()
 #goppa = goppa_2_8_6_s18()
 # goppa= goppa_2_10_9_s34()
 #goppa= goppa_2_10_10_s40()
 #goppa= goppa_2_12_64_s377()
-goppa = goppa_2_10_9_s34()
+#goppa = goppa_2_10_9_s34()
 #goppa = goppa_2_10_10_s40()

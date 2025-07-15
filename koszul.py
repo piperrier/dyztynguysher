@@ -131,8 +131,8 @@ def diff_supp_red(elem: list, G:np.ndarray, r:int) -> np.ndarray:
 
     l = elem.pop() #indice de la ligne de G correspondant
     for j in range(r):
-        c = G[l, :] * G[elem[j], :] #only the n-k last columns
-        c = c[k:]
+        c = G[l, :] * G[elem[j], :] 
+        c = c[k:] # only the n-k last columns 
         index = index_of_combination(np.array(elem[:j]+elem[j+1:]),k)*(n-k)
         res = np.append(res, (np.nonzero(c)[0] + index).astype('uint32'))   
 
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     #k = 4
     #r = 2
 
-    """
+
     G = np.array(
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
@@ -246,7 +246,6 @@ if __name__ == '__main__':
     
     k = 11
     r = 8
-    """
     
 
     """
@@ -275,9 +274,10 @@ if __name__ == '__main__':
     r = 5
     """
 
-    """
+
     #S = koszul_cohom(nrows, ncols, G, r)
     S_red = koszul_cohom_red(nrows, ncols, G, r)
+    print(max([max(i) for i in S_red]))
 
 
     #test = matrix_to_sage(S, nrows,ncols)
@@ -293,6 +293,6 @@ if __name__ == '__main__':
     print(test_red.dimensions())
     ker_red = test_red.kernel()
     print(ker_red.dimension())
-    """
+
     #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     #print(f"Time for Koszul: {time:.2f} sec")

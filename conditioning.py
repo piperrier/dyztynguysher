@@ -135,21 +135,24 @@ class RedPad(Conditioning):
         print(f"{bcolors.BOLD}### Reduction Pad conditioning{bcolors.ENDC}")
         k, n = G.shape
         try:
+            cpt = 0
             for i in range(nrows):
                 elem = index_to_base_coker(i, k, r)
                 if elem[r] not in elem[0:r]:
                     row = diff_supp_red(elem, G, r)
                     data_queue.put(row)
+                    cpt +=1
                 
-                progress_percentage = round(float(i)/ncols * 100,2)
+                progress_percentage = round(float(cpt)/(ncols - k * binomial(k,r-1)) * 100,2)
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
 
             rng = np.random.default_rng()
             for i in range((ncols - k * binomial(k, r-1)) - (nrows - r * binomial(k, r))):
-                row = random_row(rng, ncols, weight)
+                row = random_row(rng, ncols - k * binomial(k, r-1), weight)
                 data_queue.put(row)
+                cpt+=1
                 
-                progress_percentage = round(float(nrows+i)/ncols * 100,2)
+                progress_percentage = round(float(cpt)/(ncols - k * binomial(k,r-1)) * 100,2)
                 print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
             data_queue.put(None)  # Signal that computation is done
             print("\n")
