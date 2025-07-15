@@ -137,9 +137,7 @@ class RedPad(Conditioning):
                 elem = index_to_base_coker(i, k, r)
                 if elem[r] not in elem[0:r]:
                     row = diff_supp_red(elem, G, r)
-                
-                    data_queue.put(struct.pack('<I', len(row)))
-                    data_queue.put(row.tobytes())
+                    data_queue.put(row)
                 
                 progress_percentage = round(float(i)/ncols * 100,2)
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
@@ -147,9 +145,7 @@ class RedPad(Conditioning):
             rng = np.random.default_rng()
             for i in range((nrows - r * binomial(k, r)) - (ncols - k * binomial(k, r-1))):
                 row = random_row(rng, ncols, weight)
-                
-                data_queue.put(struct.pack('<I', weight))
-                data_queue.put(row.tobytes())
+                data_queue.put(row)
                 
                 progress_percentage = round(float(nrows+i)/ncols * 100,2)
                 print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
