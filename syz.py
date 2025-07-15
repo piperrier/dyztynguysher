@@ -113,11 +113,16 @@ class Instance:
         match conditioning:
             case ConditioningType.RAW:
                 nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
+
             case ConditioningType.RANDOMPAD:
                 nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
+
             case ConditioningType.RED:
                 nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
 
+            case ConditioningType.REDPAD:
+                nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+            
         matrix = sage_from_bin(self.path, matrix_file, nrows, ncols)
         
         P = matrix_plot(matrix, marker=',')
@@ -163,6 +168,10 @@ class Instance:
             case ConditioningType.RED:
                 func = Red.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+            
+            case ConditioningType.REDPAD:
+                func = RedPad.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
 
         compute_thread  = threading.Thread(target=func, args=arg)
         collect_thread  = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
@@ -201,6 +210,9 @@ class Instance:
                 func = Red.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
 
+            case ConditioningType.REDPAD:
+                func = RedPad.format
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
                 
 
         compute_thread  = threading.Thread(target=func, args=arg)
@@ -258,9 +270,11 @@ class Instance:
             case ConditioningType.RANDOMPAD:
                 nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
                 padding = RandomRowPad.get_padding(self.nrows, self.ncols)
+
             case ConditioningType.REDPAD:
                 nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
                 padding = RedPad.get_padding(self.nrows, self.ncols, self.k_code, self.r)
+                
             case _:
                 print(f"No verification aivalable for the {conditioning} conditioning, maybe it's not needed or maybe you should add it")
                 return None

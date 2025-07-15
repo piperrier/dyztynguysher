@@ -123,7 +123,7 @@ class Red(Conditioning):
 
 class RedPad(Conditioning):
     def get_dim(nrows, ncols, k, r):
-        return (nrows - r * binomial(k, r), ncols - k * binomial(k, r-1))
+        return (ncols - k * binomial(k, r-1), ncols - k * binomial(k, r-1))
 
 
     def get_padding(nrows, ncols,k, r):
@@ -142,7 +142,7 @@ class RedPad(Conditioning):
                     data_queue.put(row.tobytes())
                 
                 progress_percentage = round(float(i)/ncols * 100,2)
-                print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+                print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
 
             rng = np.random.default_rng()
             for i in range((nrows - r * binomial(k, r)) - (ncols - k * binomial(k, r-1))):
@@ -152,7 +152,7 @@ class RedPad(Conditioning):
                 data_queue.put(row.tobytes())
                 
                 progress_percentage = round(float(nrows+i)/ncols * 100,2)
-                print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+                print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
             data_queue.put(None)  # Signal that computation is done
             print("\n")
             
