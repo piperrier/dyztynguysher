@@ -102,6 +102,7 @@ class Red(Conditioning):
         return (nrows - r * binomial(k, r), ncols - k * binomial(k, r-1))
     
     def format(nrows, ncols, G, r, data_queue):
+        print(f"{bcolors.BOLD}### Reduction conditioning{bcolors.ENDC}")
         k, n = G.shape
         try:
             for i in range(nrows):
@@ -131,6 +132,7 @@ class RedPad(Conditioning):
 
 
     def format(nrows, ncols, G, r, data_queue, weight):
+        print(f"{bcolors.BOLD}### Reduction Pad conditioning{bcolors.ENDC}")
         k, n = G.shape
         try:
             for i in range(nrows):
@@ -143,7 +145,7 @@ class RedPad(Conditioning):
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
 
             rng = np.random.default_rng()
-            for i in range((nrows - r * binomial(k, r)) - (ncols - k * binomial(k, r-1))):
+            for i in range((ncols - k * binomial(k, r-1)) - (nrows - r * binomial(k, r))):
                 row = random_row(rng, ncols, weight)
                 data_queue.put(row)
                 
