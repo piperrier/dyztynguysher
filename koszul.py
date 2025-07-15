@@ -112,9 +112,8 @@ def diff_supp(elem, G, r):
 
 # RANDOMPAD Conditioning
 #@njit
-def random_row(ncols, weight):
+def random_row(rng, ncols, weight):
     #row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
-    rng = np.random.default_rng()
     row = rng.choice(np.arange(ncols, dtype='uint32'), size=weight, replace=False)
 
     row.sort()
@@ -209,9 +208,9 @@ if __name__ == '__main__':
     """
 
     ### randrow
-
-    #time = timeit.timeit(lambda: random_row(1_524_600, 722), number = 100)
-    #print(time)
+    rng = np.random.default_rng()
+    time = timeit.timeit(lambda: random_row(rng, 1_524_600, 722), number = 10_000)
+    print(time)
     #print("randrom",time)
     
     #G = np.array([[1, 0, 0, 0, 0, 1, 1],

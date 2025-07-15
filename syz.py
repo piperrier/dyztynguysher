@@ -350,9 +350,8 @@ class Instance:
 ### Cleaning
 #################################
 
-
     def clear_wdir(self):
-        subprocess.run("rm -r" + self.wdir + "/*", shell=True)
+        subprocess.run("rm -r " + self.wdir + "/*", shell=True)
     
 
     def clear_idir(self):

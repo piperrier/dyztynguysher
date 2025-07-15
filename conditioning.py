@@ -81,8 +81,9 @@ class RandomRowPad(Conditioning):
                 progress_percentage = round(float(i)/ncols * 100,2)
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
             
+            rng = np.random.default_rng()
             for i in range(ncols - nrows):
-                row = random_row(ncols, weight)
+                row = random_row(rng, ncols, weight)
                 data_queue.put(row)
                 
                 progress_percentage = round(float(nrows+i)/ncols * 100,2)
@@ -143,8 +144,9 @@ class RedPad(Conditioning):
                 progress_percentage = round(float(i)/ncols * 100,2)
                 print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
 
+            rng = np.random.default_rng()
             for i in range((nrows - r * binomial(k, r)) - (ncols - k * binomial(k, r-1))):
-                row = random_row(ncols, weight)
+                row = random_row(rng, ncols, weight)
                 
                 data_queue.put(struct.pack('<I', weight))
                 data_queue.put(row.tobytes())
