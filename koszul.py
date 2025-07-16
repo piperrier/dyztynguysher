@@ -111,13 +111,26 @@ def diff_supp(elem, G, r):
 
 
 # RAWPAD Conditioning
-#@njit
-def random_row(rng, ncols, weight):
-    #row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
-    row = rng.choice(np.arange(ncols, dtype='uint32'), size=weight, replace=False)
+@njit
+def random_row_numba(ncols, weight):
+    selected = np.zeros(weight, dtype=np.int32)
+    count = 0
+    while count < weight:
+        num = np.random.randint(0, ncols)
+        duplicate = False
+        for i in range(count):
+            if selected[i] == num:
+                duplicate = True
+                break
+        if not duplicate:
+            selected[count] = num
+            count += 1
+    return selected
 
-    row.sort()
-    return row
+
+def random_row(ncols, weight):
+    arr = random_row_numba(ncols, weight)
+    return np.sort(arr).astype(np.int32)
 
 
 # RED Conditioning
@@ -147,8 +160,8 @@ def diff_supp_red(elem: list, G:np.ndarray, r:int) -> np.ndarray:
 
 def koszul_cohom(nrows, ncols, G, r):
     """
-    Computes the image of the cokernel elements between row_begin and row_end(exluded)
     This function is used to computed the image of the cohomology
+    Computes the image of the cokernel elements between row_begin and row_end(exluded)
     """
     # Initialize an empty list to store the results
     k, n = G.shape
@@ -207,11 +220,18 @@ if __name__ == '__main__':
     print(coker==test)
     """
 
+    
     ### randrow
     rng = np.random.default_rng()
-    time = timeit.timeit(lambda: random_row(rng, 1_524_600, 722), number = 10_000)
-    print(time)
-    #print("randrom",time)
+    #time1 = timeit.timeit(lambda: random_row(rng, 31_200_526, 886), number = 1_000)
+    #print(time1)
+
+    time2 = timeit.timeit(lambda: random_row_2(31_200_526, 886), number = 1_000)
+    print(time2)
+
+    for i in range(10):
+        row = random_row_2(15,5)
+        print(row)
     
     #G = np.array([[1, 0, 0, 0, 0, 1, 1],
     #             [0, 1, 0, 0, 1, 0, 1],
@@ -223,7 +243,7 @@ if __name__ == '__main__':
     #k = 4
     #r = 2
 
-
+    """
     G = np.array(
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
         [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
@@ -246,6 +266,7 @@ if __name__ == '__main__':
     
     k = 11
     r = 8
+    """
     
 
     """
@@ -274,7 +295,7 @@ if __name__ == '__main__':
     r = 5
     """
 
-
+    """
     #S = koszul_cohom(nrows, ncols, G, r)
     S_red = koszul_cohom_red(nrows, ncols, G, r)
     print(max([max(i) for i in S_red]))
@@ -296,3 +317,4 @@ if __name__ == '__main__':
 
     #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     #print(f"Time for Koszul: {time:.2f} sec")
+    """
