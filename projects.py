@@ -1,6 +1,7 @@
 from syz import *
 from conditioning import *
 
+from sage.matrix.special import identity_matrix
 
 #################################
 ### Examples
@@ -43,6 +44,7 @@ def hamming_4_8(): #betti_8_9 = 34
     C = codes.HammingCode(GF(2),4)
     G = copy(C.generator_matrix())
     G = id_on_left(G)
+    #assert G[:,:i.k_code] == identity_matrix(GF(2), i.k_code), "G is not of the right form"
     #G[:,[10,11]] = G[:,[11,10]]
 
     i.set_code_matrix(G)

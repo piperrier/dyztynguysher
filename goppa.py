@@ -7,6 +7,8 @@ from sage.misc.functional import rank
 from sage.combinat.permutation import Permutation
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
+from sage.matrix.special import identity_matrix
+
 
 # q  the base field cardinality
 # m  the extension degree
@@ -52,4 +54,5 @@ def id_on_left(M):
     pivots = list(M.pivots())
     order = pivots + [i for i in range(M.ncols()) if i not in pivots]
     M_permuted = M[:, order]
+    assert M_permuted[:,:M.nrows()] == identity_matrix(GF(2), M.nrows()), "The matrix is not in the right form"
     return M_permuted

@@ -82,7 +82,7 @@ class Instance:
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
         thr={self.thr}\n\
-        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.k_code*binomial(self.k_code, self.r)}\n\
+        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.k_code*binomial(self.k_code, self.r-1)}\n\
         density={round(density*100,5)}% weight={self.ncols * self.nrows * density:.0f} space={(self.ncols * self.nrows * density + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
         path={self.path}"
 
@@ -171,7 +171,8 @@ class Instance:
             
             case ConditioningType.REDPAD:
                 func = RedPad.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+                _, ncols_red = RedPad.get_dim(self.nrows, self.n_code, self.k_code, self.r)
+                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*ncols_red))
 
         compute_thread  = threading.Thread(target=func, args=arg)
         collect_thread  = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
