@@ -58,8 +58,8 @@ class Instance:
         self.code_matrix = None
         self.nrows = binomial(self.k_code,self.r+1) * self.r + binomial(self.k_code,self.r) * self.r # dim of cokernel
         self.ncols = self.n_code * binomial(self.k_code,self.r-1) # dim of arrival space
-        self.Sraw = None #Sraw is a ndarray of ndarray, best for speed and memory usage, for very large matrix we don't construct it, and prefer to write it in memory
-        # self.ker_raw = None
+        self.S = None #S is a ndarray of ndarray, best for speed and memory usage, for very large matrix we don't construct it, and prefer to write it in memory
+        # self.ker = None
 
         # dir / path
         self.current_dir = os.path.abspath(os.curdir)
@@ -184,7 +184,7 @@ class Instance:
         collect_thread.join()
 
         print("Matrix computation and collection completed.")
-        self.Sraw = np.array(data_container, dtype=np.ndarray)
+        self.S = np.array(data_container, dtype=np.ndarray)
 
 
     def construct_and_write_matrix(self, conditioning=ConditioningType.RAW):
@@ -403,8 +403,8 @@ if __name__ == '__main__':
         matrix[3] = matrix[0]    
 
 
-        i.Sraw = matrix
-        matrix_to_bin(i.path,"Sraw",i.Sraw)
+        i.S = matrix
+        matrix_to_bin(i.path,"Sraw",i.S)
 
         return i
 
@@ -430,8 +430,8 @@ if __name__ == '__main__':
         for j in range(-50,-2,+1):
             matrix[j] = matrix[0]    
 
-        i.Sraw = matrix
-        matrix_to_bin(i.path,"Sraw",i.Sraw)
+        i.S = matrix
+        matrix_to_bin(i.path,"Sraw",i.S)
         # i.matrix_to_bin()
 
         return i

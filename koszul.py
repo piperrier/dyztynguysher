@@ -153,51 +153,6 @@ def diff_supp_red(elem: list, G:np.ndarray, r:int) -> np.ndarray:
     return res
 
 
-#################################
-### Homology functions (used for test)
-#################################
-
-
-def koszul_cohom(nrows, ncols, G, r):
-    """
-    This function is used to computed the image of the cohomology
-    Computes the image of the cokernel elements between row_begin and row_end(exluded)
-    """
-    # Initialize an empty list to store the results
-    k, n = G.shape
-    S_coker = []
-
-    for i in range(nrows):
-        # Compute the image for each element of the base (each row)
-        elem = index_to_base_coker(i, k, r)
-        diff_row = diff_supp(elem, G, r)
-        S_coker.append(diff_row)
-        progress_percentage = round(float(i)/nrows * 100,2)
-        print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
-
-    return np.array(S_coker, dtype=np.ndarray)
-
-
-def koszul_cohom_red(nrows, ncols, G, r):
-    """
-    Computes the image of the cokernel elements between row_begin and row_end(exluded)
-    This function is used to computed the image of the cohomology
-    """
-    # Initialize an empty list to store the results
-    k, n = G.shape
-    S_coker = []
-
-    for i in range(nrows):
-        # Compute the image for each element of the base (each row)
-        elem = index_to_base_coker(i, k, r)
-        if elem[r] not in elem[0:r]:    # remove row with pivots
-            diff_row = diff_supp_red(elem, G, r)
-            S_coker.append(diff_row)
-        progress_percentage = round(float(i)/nrows * 100,2)
-        print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
-
-    return np.array(S_coker, dtype=np.ndarray)
-
 if __name__ == '__main__':
     import timeit
     import itertools
@@ -242,6 +197,52 @@ if __name__ == '__main__':
     #ncols = 28
     #k = 4
     #r = 2
+
+    
+    #################################
+    ### Homology functions (used for test)
+    #################################
+
+
+    def koszul_cohom(nrows, ncols, G, r):
+        """
+        This function is used to computed the image of the cohomology
+        Computes the image of the cokernel elements between row_begin and row_end(exluded)
+        """
+        # Initialize an empty list to store the results
+        k, n = G.shape
+        S_coker = []
+
+        for i in range(nrows):
+            # Compute the image for each element of the base (each row)
+            elem = index_to_base_coker(i, k, r)
+            diff_row = diff_supp(elem, G, r)
+            S_coker.append(diff_row)
+            progress_percentage = round(float(i)/nrows * 100,2)
+            print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+
+        return np.array(S_coker, dtype=np.ndarray)
+
+
+    def koszul_cohom_red(nrows, ncols, G, r):
+        """
+        Computes the image of the cokernel elements between row_begin and row_end(exluded)
+        This function is used to computed the image of the cohomology
+        """
+        # Initialize an empty list to store the results
+        k, n = G.shape
+        S_coker = []
+
+        for i in range(nrows):
+            # Compute the image for each element of the base (each row)
+            elem = index_to_base_coker(i, k, r)
+            if elem[r] not in elem[0:r]:    # remove row with pivots
+                diff_row = diff_supp_red(elem, G, r)
+                S_coker.append(diff_row)
+            progress_percentage = round(float(i)/nrows * 100,2)
+            print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+
+        return np.array(S_coker, dtype=np.ndarray)
 
     """
     G = np.array(
