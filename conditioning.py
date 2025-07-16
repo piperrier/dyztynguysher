@@ -10,7 +10,7 @@ from sage.functions.other import binomial
 
 class ConditioningType(Enum):
     RAW = 'raw'
-    RANDOMPAD = 'randompad'
+    RAWPAD = 'rawpad'
     RED = 'red'
     REDPAD = 'redpad'
 
@@ -58,7 +58,7 @@ class Raw(Conditioning):
             data_queue.put(None)  # Ensure the writing thread can exit
 
 
-class RandomRowPad(Conditioning):
+class RawPad(Conditioning):
     def get_dim(nrows, ncols):
         if nrows > ncols:
             raise Exception(f"Cannot add random rows to a matrix with more rows than columns, {nrows}>{ncols}")
@@ -70,7 +70,7 @@ class RandomRowPad(Conditioning):
 
 
     def format(nrows, ncols, G, r, data_queue, weight):
-        print(f"{bcolors.BOLD}### Randow Row Pad conditioning{bcolors.ENDC}")
+        print(f"{bcolors.BOLD}### Raw Pad conditioning{bcolors.ENDC}")
         k, n = G.shape
         try:
             for i in range(nrows):

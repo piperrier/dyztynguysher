@@ -43,7 +43,7 @@ def hamming_4_8(): #betti_8_9 = 34
     C = codes.HammingCode(GF(2),4)
     G = copy(C.generator_matrix())
     
-    G[:,[10,11]] = G[:,[11,10]]
+    #G[:,[10,11]] = G[:,[11,10]]
 
     i.set_code_matrix(G)
     print(i.code_matrix)    
@@ -232,7 +232,7 @@ h48 = hamming_4_8()
 
 #goppa = goppa_2_3_2()
 #goppa = goppa_2_8_6_s18()
-# goppa= goppa_2_10_9_s34()
+#goppa= goppa_2_10_9_s34()
 #goppa= goppa_2_10_10_s40()
 #goppa= goppa_2_12_64_s377()
 #goppa = goppa_2_10_9_s34()

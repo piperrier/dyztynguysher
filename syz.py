@@ -114,8 +114,8 @@ class Instance:
             case ConditioningType.RAW:
                 nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
 
-            case ConditioningType.RANDOMPAD:
-                nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
+            case ConditioningType.RAWPAD:
+                nrows, ncols = RawPad.get_dim(self.nrows, self.ncols)
 
             case ConditioningType.RED:
                 nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
@@ -161,8 +161,8 @@ class Instance:
                 func = Raw.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
 
-            case ConditioningType.RANDOMPAD:
-                func = RandomRowPad.format
+            case ConditioningType.RAWPAD:
+                func = RawPad.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
 
             case ConditioningType.RED:
@@ -202,8 +202,8 @@ class Instance:
                 func = Raw.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
             
-            case ConditioningType.RANDOMPAD:
-                func = RandomRowPad.format
+            case ConditioningType.RAWPAD:
+                func = RawPad.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
             
             case ConditioningType.RED:
@@ -267,9 +267,9 @@ class Instance:
         _, solution_file = self.get_files_names(conditioning)
 
         match conditioning:
-            case ConditioningType.RANDOMPAD:
-                nrows, ncols = RandomRowPad.get_dim(self.nrows, self.ncols)
-                padding = RandomRowPad.get_padding(self.nrows, self.ncols)
+            case ConditioningType.RAWPAD:
+                nrows, ncols = RawPad.get_dim(self.nrows, self.ncols)
+                padding = RawPad.get_padding(self.nrows, self.ncols)
 
             case ConditioningType.REDPAD:
                 nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)

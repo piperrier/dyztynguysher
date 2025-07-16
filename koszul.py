@@ -110,7 +110,7 @@ def diff_supp(elem, G, r):
     return res
 
 
-# RANDOMPAD Conditioning
+# RAWPAD Conditioning
 #@njit
 def random_row(rng, ncols, weight):
     #row = np.random.choice(np.arange(ncols), size=weight, replace=False).astype('uint32')
