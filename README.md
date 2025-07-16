@@ -1,5 +1,7 @@
 # The syzygy distinguisher
 
+<https://eprint.iacr.org/2024/1193>
+
 ## Description
 
 On veut utiliser l'agorithme de block Wiedemann pour trouver si la $r$-ième homologie suivante est nulle ou non :  
@@ -40,6 +42,8 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 ## Usage
 
+**Run the dyztynguysher:**
+
 1. Activate the env
 
     ```bash
@@ -73,6 +77,51 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
     h48.check_solution(ConditioningType.RAWPAD)
     ```
 
+**Draw a matrix:**
+
+1. Create an instance and write it a bin
+
+    ```python
+    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
+    C = codes.HammingCode(GF(2),4)
+    G = C.generator_matrix()
+    h48.set_code_matrix(G)
+    h48.construct_and_write_matrix(ConditioningType.RAWPAD)
+    ```
+
+2. Draw it
+
+    ```python
+    h48.pretty(ConditioningType.RED, dpi = 400)
+    ```
+
+**Get a sage matrix (to do test):**
+
+1. Create an instance and write/collect it
+
+    ```python
+    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
+    C = codes.HammingCode(GF(2),4)
+    G = C.generator_matrix()
+    h48.set_code_matrix(G)
+    h48.construct_and_write_matrix(ConditioningType.RAWPAD)
+    #h48.construct_and_collect_matrix(ConditioningType.RAWPAD) # h48.S
+    ```
+
+2. Use the `sage_from_bin(path, name, nrows, ncols)` or `matrix_to_sage(matrix, nrows, cols)` to get a sage matrix
+
+    ```python
+    nrows, ncols = RawPad.get_dim(h48.nrows, h48.ncols)
+    matrix = sage_from_bin("Srawpad", h48.path, nrows, ncols)
+    #matrix = matrix_to_sage(h48.S, nrows, ncols)
+    ```
+
+**Create your own conditioning:**
+
+1. Create a class in `conditioning.py`
+
+2. Fix all the case `match`/`case` in `syz.py`
+
 ## Block Wiedemann & Complexity
 
 **References for Block wiedemann**:
@@ -93,12 +142,48 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 - the matrix shouldn't have a non-zero eigenvalue of high multiplicity
 
+## Conditioning & Reduction
+
+1. `RAW`:  
+    Construct the whole rectangular matrix ($nrows<ncols$)  
+
+    $nrows = k \binom{k}{r} - \binom{k}{r+1}$  
+
+    $ncols = n \binom{k}{r-1}$
+
+2. `RAWPAD`:  
+    Construct the whole rectangular matrix and pad with random rows to obtain a square matrix  
+
+    $nrows = ncols = n \binom{k}{r-1}$  
+
+3. `RED`:
+    Construct the whole reduced matrix  
+
+    We delete $r \binom{k}{r}$ rows that have obvious pivots and $k\binom{k}{r-1}$ columns that are all zero  
+
+    $nrows = k \binom{k}{r} - \binom{k}{r+1} - r \binom{k}{r}$  
+
+    $ncols = n \binom{k}{r-1} - k\binom{k}{r-1}$
+
+4. `REDPAD`:  
+    Construct the whole reduced matrix and pad with random rows to obtain a square matrix  
+
+    $nrows = ncols = n \binom{k}{r-1} - k\binom{k}{r-1}$
+
+**Reduction ratio:**
+
+- We delete $\frac{k}{n}$ of the columns
+  
+- We delete $\frac{r}{k}\times\frac{1}{1-1/r}$ of the rows
+
 ## Potential improvements
 
-- multithreading when constructing the matrix
-- improve theoretical matrix reduction before construction
-- use `MPI` option of `cado-nfs` to run block Wiedemann on multiple computers
-- refactor conditioning
+- Multithreading when constructing the matrix
+- Improve theoretical matrix reduction before construction
+- Use `MPI` option of `cado-nfs` to run block Wiedemann on multiple computers
+- Refactor conditioning
+- Take advantage of the recursive structure
+- Black blox, don't construct the matrix
 
 ## Class info
 
