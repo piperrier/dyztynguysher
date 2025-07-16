@@ -42,7 +42,7 @@ def hamming_4_8(): #betti_8_9 = 34
     i = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = copy(C.generator_matrix())
-    
+    G = id_on_left(G)
     #G[:,[10,11]] = G[:,[11,10]]
 
     i.set_code_matrix(G)

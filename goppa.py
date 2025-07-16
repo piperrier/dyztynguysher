@@ -46,3 +46,10 @@ def carre_matrix(M):
     # lex and skip i<j
     L = [M.row(i).pairwise_product(M.row(j)) for i in range(0,k) for j in range(i,k)]
     return matrix(L)
+
+
+def id_on_left(M):
+    pivots = list(M.pivots())
+    order = pivots + [i for i in range(M.ncols()) if i not in pivots]
+    M_permuted = M[:, order]
+    return M_permuted
