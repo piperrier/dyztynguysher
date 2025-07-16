@@ -48,7 +48,10 @@ def hamming_4_8(): #betti_8_9 = 34
     #G[:,[10,11]] = G[:,[11,10]]
 
     i.set_code_matrix(G)
-    print(i.code_matrix)    
+    
+    i.construct_and_write_matrix(ConditioningType.REDPAD)
+    i.run(ConditioningType.REDPAD)
+    i.check_solution(ConditioningType.REDPAD)   
 
     #test = matrix_to_sage(i.Sraw, i.nrows, i.ncols)
     # i.Sraw = matrix_from_bin(i.path,"Sraw")
