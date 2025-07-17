@@ -42,30 +42,39 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 ## Usage
 
-**Run the dyztynguysher:**
-
-1. Activate the env
+- Always activate the env:
 
     ```bash
     conda activate syz
     ```
 
-2. On the sage interpreter, load `syz.py`
+**Get an overview**
+
+- To see the doc and get an overview of the project:
+
+    ```python
+    load("syz.py)
+    help(Instance)
+    ```
+
+**Run the dyztynguysher:**
+
+1. On the sage interpreter, load `syz.py`:
 
     ```python
     load("syz.py")
     ```
 
-3. Create an instance
+2. Create an instance:
 
     ```python
-    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
+    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", idir="/nvme/user/instance", wdir="/nvme/user/wdir")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
     h48.set_code_matrix(G)
     ```
 
-4. Run the distinguisher with the conditioning of your choice:
+3. Run the distinguisher with the conditioning of your choice:
    - `RAW`
    - `RAWPAD`
    - `RED`
@@ -79,7 +88,7 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 **Draw a matrix:**
 
-1. Create an instance and write it a bin
+1. Create an instance and write it a bin:
 
     ```python
     h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
@@ -89,7 +98,7 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
     h48.construct_and_write_matrix(ConditioningType.RAWPAD)
     ```
 
-2. Draw it
+2. Draw it:
 
     ```python
     h48.pretty(ConditioningType.RED, dpi = 400)
@@ -97,7 +106,7 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 **Get a sage matrix (to do test):**
 
-1. Create an instance and write/collect it
+1. Create an instance and write/collect it:
 
     ```python
     h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
@@ -108,7 +117,7 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
     #h48.construct_and_collect_matrix(ConditioningType.RAWPAD) # h48.S
     ```
 
-2. Use the `sage_from_bin(path, name, nrows, ncols)` or `matrix_to_sage(matrix, nrows, cols)` to get a sage matrix
+2. Use the `sage_from_bin(path, name, nrows, ncols)` or `matrix_to_sage(matrix, nrows, cols)` to get a sage matrix:
 
     ```python
     nrows, ncols = RawPad.get_dim(h48.nrows, h48.ncols)

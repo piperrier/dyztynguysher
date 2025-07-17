@@ -1,6 +1,3 @@
-import timeit
-
-
 import subprocess
 import os
 import re
@@ -9,7 +6,7 @@ import numpy as np
 import queue
 import threading
 
-from utils import *
+from utils import DEFAULT_DIR, DEFAULT_WDIR, bcolors
 from goppa import *
 from matrix_bin import *
 from koszul import *
@@ -21,17 +18,42 @@ from sage.plot.matrix_plot import matrix_plot
 from sage.functions.other import binomial
 from sage.matrix.constructor import matrix
 from sage.misc.functional import log
-from sage.functions.other import ceil
-from sage.rings.integer_ring import ZZ
+#from sage.functions.other import ceil
+#from sage.rings.integer_ring import ZZ
 from sage.modules.free_module_element import vector
-from sage.rings.finite_rings.finite_field_constructor import GF
+#from sage.rings.finite_rings.finite_field_constructor import GF
 
 
 #from sage.all import *
 
 
 class Instance:
-    def __init__(self, name, n_code, k_code, r, m, n, threads, wdir="/tmp/wdir"):
+    """The class representing the instance we try to solve.
+    
+    Attributes:
+        * Code parameters
+        name (str): the name of the code.
+        n_code (int): the length of the code.
+        k_code (int): the dimension of the code.
+        r (int): the betti number to compute betti_r_r+1
+
+        * Wiedemann parameters
+        m (str): size of the left block
+        n (str): size of the right block
+        thr (str): number of threads on which you run cado-nfs/bwc
+
+        * Matrix system and sol
+        code_matrix (sage.matrix): the generating matrix of the code
+        nrows (int): the number of rows of the "raw" system matrix
+        ncols (int): the number of columns of the "raw" system matrix
+        self.S (ndarray of ndarray of uint32): the sparse representation of the system matrix, only use this with light matrices (cf self.construct_and_collect_matrix)
+
+        * dir/wdir
+        dir (str): absolute path to the directory where we construct the matrix and eventually put the kernel vectors
+        wdir (str): absolute path to the directory where cado nfs work, should be fast in I/O, everything is deleted at the end of the running time 
+
+    """
+    def __init__(self, name, n_code, k_code, r, m, n, threads, idir=DEFAULT_DIR, wdir=DEFAULT_WDIR):
         """Initializes the Instance with the given parameters.
 
         Args:
@@ -41,6 +63,8 @@ class Instance:
             r(int): compute betti_r_r+1
             m,n(str): a multiple of 64 declared as an str, the m and n of block wiedemann, eg m = "128" and n ="64"
             threads(str): number of threads you use, if your machine has 12 threads, threads = "3x4"
+            dir(str) : absolute path to the directory where we construct the matrix and eventually put the kernel vectors
+            wdir(str): absolute path to the directory where cado nfs work, should be fast in I/O, everything is deleted at the end of the running time 
         """
 
         # code parameters
@@ -61,17 +85,17 @@ class Instance:
         self.S = None #S is a ndarray of ndarray, best for speed and memory usage, for very large matrix we don't construct it, and prefer to write it in memory
         # self.ker = None
 
-        # dir / path
-        self.current_dir = os.path.abspath(os.curdir)
-        self.instance_dir = f"instance/{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
-        self.path = self.current_dir + "/" +self.instance_dir
+        # idir / wdir
+        self.idir = idir + "/" + f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
         self.wdir = wdir # on some lame.enst.fr machine : "/nvme/pperrier-22/wdir"
-
+    
+        if not os.path.exists(self.idir):
+            os.makedirs(self.idir)
         
-        if not os.path.exists(self.path):
-            os.makedirs(self.path)
-
-
+        if not os.path.exists(self.wdir):
+            os.makedirs(self.wdir)
+    
+    
     def __repr__(self):
         density = self.density()
 
@@ -84,7 +108,7 @@ class Instance:
         thr={self.thr}\n\
         nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.k_code*binomial(self.k_code, self.r-1)}\n\
         density={round(density*100,5)}% weight={self.ncols * self.nrows * density:.0f} space={(self.ncols * self.nrows * density + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
-        path={self.path}"
+        idir={self.idir} wdir={self.wdir}"
 
 
     def complexity(self):
@@ -123,13 +147,13 @@ class Instance:
             case ConditioningType.REDPAD:
                 nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
             
-        matrix = sage_from_bin(self.path, matrix_file, nrows, ncols)
+        matrix = sage_from_bin(self.idir, matrix_file, nrows, ncols)
         
         P = matrix_plot(matrix, marker=',')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
 
 
-    def get_files_names(self, conditioning):
+    def get_files_names(self, conditioning: ConditioningType) -> tuple[str,str]:
         matrix_name = "S" + conditioning.value
         solution_name = "W" + conditioning.value
 
@@ -141,13 +165,13 @@ class Instance:
 #################################
 
 
-    def set_code_matrix(self, matrix):
+    def set_code_matrix(self, matrix: sage.matrix):
         self.code_matrix = matrix
         
     
     def construct_and_collect_matrix(self, conditioning=ConditioningType.RAW):
         """
-        Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file.
+        Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file. You can access the matrix with self.S
         Don't use this function for large matrices (3>GB)
         """
         if self.code_matrix == None:
@@ -217,7 +241,7 @@ class Instance:
                 
 
         compute_thread  = threading.Thread(target=func, args=arg)
-        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.path, matrix_name, data_queue))
+        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.idir, matrix_name, data_queue))
 
         compute_thread.start()
         write_thread.start()
@@ -242,7 +266,6 @@ class Instance:
             
 
     # WARNING! Not the exact density of the matrix representing the system but it should be close to the real one
-    # Note that the row density is equal to the matrix density
     def density(self)->float:
         """
         Approximate density of the koszul cohomology matrix
@@ -258,10 +281,9 @@ class Instance:
 #################################
 
 
-    # WARNING! self.nrows == nrows might be buggy, but this is not meant to be use in this scenario since there is no irrelevant vector. So we let the weakness
     def check_solution(self, conditioning):
         """
-        When the padding is added, check that at least one vector of the kernel is all zero on the padding and non zero on the relevant elements.
+        When padding is added, check that at least one vector of the kernel is zero on the padding and non zero on the relevant elements.
         """
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
         
@@ -281,12 +303,12 @@ class Instance:
                 return None
 
         # ker is a sage matrix with 64 (for now) vectors in columns notation
-        ker = solution_from_bin(self.path, solution_file, nrows, ncols)
+        ker = solution_from_bin(self.idir, solution_file, nrows, ncols)
 
         solution = False
 
-        relevant_base = vector([any(c) for c in ker[:-padding,:].columns()]) # remove padding
-        irrelevant_base = vector([1-any(c) for c in ker[-padding:,:].columns()]) # only padding
+        relevant_base = vector([any(c) for c in ker[:-padding,:].columns()])
+        irrelevant_base = vector([1-any(c) for c in ker[-padding:,:].columns()])
 
         dim = sum(relevant_base.pairwise_product(irrelevant_base))
         solution = any(relevant_base.pairwise_product(irrelevant_base))
@@ -305,21 +327,30 @@ class Instance:
 
 
     def scan(self, matrix_file):
+        """
+        Call to cado-nfs/bwc: mf_scan2 function
+        """
         print(f"{bcolors.BOLD}### Scan{bcolors.ENDC}")
-        subprocess.run("mf_scan2 " + self.path + "/"+ matrix_file  +".bin", shell=True)
+        subprocess.run("mf_scan2 " + self.idir + "/"+ matrix_file  +".bin", shell=True)
 
 
     def balancing(self, matrix_file):
+        """
+        Call to cado-nfs/bwc: mf_bal function
+        """
         print(f"{bcolors.BOLD}### Balancing{bcolors.ENDC}")
         subprocess.run("mf_bal "
         + self.thr + "                      \
-        mfile=" + self.path + "/" + matrix_file + ".bin       \
+        mfile=" + self.idir + "/" + matrix_file + ".bin       \
         reorder=columns                     \
-        rwfile=" + self.path + "/" + matrix_file + ".rw.bin   \
-        cwfile=" + self.path + "/" + matrix_file + ".cw.bin", shell=True)
+        rwfile=" + self.idir + "/" + matrix_file + ".rw.bin   \
+        cwfile=" + self.idir + "/" + matrix_file + ".cw.bin", shell=True)
 
 
     def bwc(self, matrix_file):
+        """
+        Call to cado-nfs/bwc: bwc.pl script
+        """
         print(f"{bcolors.BOLD}### Bwc{bcolors.ENDC}")
         threads = (self.thr).split('x')
         thr = ''.join(threads)
@@ -330,27 +361,39 @@ class Instance:
         m=" + self.m + "                            \
         n=" + self.n + "                            \
         nullspace=left                              \
-        matrix=" + self.path +"/"+ matrix_file  +".bin               \
+        matrix=" + self.idir +"/"+ matrix_file  +".bin               \
         thr=" + self.thr + "                        \
-        balancing=$(find " + self.path + " -name '"+ matrix_file +"."+ thr +".*.bin')",shell=True)
+        balancing=$(find " + self.idir + " -name '"+ matrix_file +"."+ thr +".*.bin')",shell=True)
 
 
     def retrieve_solution(self, solution_file):
+        """
+        At the end of bwc, if a solution exist in self.wdir, copy it in self.dir
+        """
         print(f"{bcolors.BOLD}### Retrieving solution{bcolors.ENDC}")
         if os.path.exists(self.wdir + "/W"):
-            shutil.copy(self.wdir + "/W", self.path + "/" + solution_file + ".bin")
-            print(f"{bcolors.OKGREEN}Solution retrieved and placed in {self.instance_dir}{bcolors.ENDC}")
+            shutil.copy(self.wdir + "/W", self.idir + "/" + solution_file + ".bin")
+            print(f"{bcolors.OKGREEN}Solution retrieved and placed in {self.idir}{bcolors.ENDC}")
         else:
             print(f"{bcolors.FAIL}No solution file found, maybe CADO NFS did not succeed{bcolors.ENDC}")
 
 
     def run(self, conditioning=ConditioningType.RAW):
+        """
+        Runs the dystiguisher:
+            1. scan()
+            2. balancing()
+            3. bwc()
+            4. retrieve_solution()
+            5. 6. clear()
+            
+        """
         print(f"{bcolors.BOLD}### Run{bcolors.ENDC}")
         
         matrix_file, solution_file = self.get_files_names(conditioning)
 
-        if not os.path.exists(self.path + "/" + matrix_file + ".bin"):
-            raise Exception(f"{self.path}/{matrix_file}.bin doesn't exist !")
+        if not os.path.exists(self.idir + "/" + matrix_file + ".bin"):
+            raise Exception(f"{self.idir}/{matrix_file}.bin doesn't exist !")
             
         self.scan(matrix_file)
         self.balancing(matrix_file)
@@ -365,6 +408,7 @@ class Instance:
 ### Cleaning
 #################################
 
+
     def clear_wdir(self):
         subprocess.run("rm -r " + self.wdir + "/*", shell=True)
     
@@ -372,69 +416,8 @@ class Instance:
     def clear_idir(self):
         dot_bin = re.compile(r'^[^.]*\.bin$')
         
-        for filename in os.listdir(self.instance_dir + "/"):
-            file_path = os.path.join(self.instance_dir + "/", filename)
+        for filename in os.listdir(self.idir + "/"):
+            file_path = os.path.join(self.idir + "/", filename)
 
-            # if os.path.isfile(file_path) and not matrix_re.match(filename) and not solution_re.match(filename) :
             if os.path.isfile(file_path) and not dot_bin.match(filename) :
                 os.remove(file_path)
-
-
-
-
-
-if __name__ == '__main__':
-
-#################################
-### Dumb test
-#################################
-    def test_0():
-        i = Instance("test",0,0,0,"64", "64", "3x4")
-        i.nrows = 100
-        i.ncols= 150
-
-        matrix = []
-        for j in range(i.nrows):
-            columns=[j]
-            matrix.append(columns)
-
-        matrix[1] = matrix[0]
-        matrix[2] = matrix[0]
-        matrix[3] = matrix[0]    
-
-
-        i.S = matrix
-        matrix_to_bin(i.path,"Sraw",i.S)
-
-        return i
-
-    def test_1():
-        i = Instance("test",1,0,0, "512", "64", "2x2")
-        i.nrows = 92_820
-        i.ncols = 111_860
-
-        # i.ncols = 120_000
-        # i.nrows = 90_000 
-
-        # k = 11
-        # print(2**k)
-        # i.nrows = 2**k
-        # i.ncols = 2**k
-
-        matrix = []
-        for j in range(i.nrows):
-            columns=[j,ZZ.random_element(j+1,i.ncols)]
-            # columns=[j]
-            matrix.append(columns)
-
-        for j in range(-50,-2,+1):
-            matrix[j] = matrix[0]    
-
-        i.S = matrix
-        matrix_to_bin(i.path,"Sraw",i.S)
-        # i.matrix_to_bin()
-
-        return i
-
-    # test0 = test_0()
-    # test1 = test_1()

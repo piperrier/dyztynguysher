@@ -1,3 +1,10 @@
+import os
+
+
+DEFAULT_DIR = os.path.abspath(os.curdir) + "/instance"
+DEFAULT_WDIR = "/tmp/wdir"
+
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
