@@ -356,8 +356,9 @@ class Instance:
         n=" + self.n + "                            \
         nullspace=left                              \
         matrix=" + self.idir +"/"+ matrix_file  +".bin               \
-        thr=" + self.thr + "                        \
-        balancing=$(find " + self.idir + " -name '"+ matrix_file +"."+ thr +".*.bin')",shell=True)
+        thr=" + self.thr, shell = True)
+        
+        # balancing=$(find " + self.idir + " -name '"+ matrix_file +"."+ thr +".*.bin')",shell=True)
 
 
     def retrieve_solution(self, solution_file):
@@ -390,7 +391,7 @@ class Instance:
             raise Exception(f"{self.idir}/{matrix_file}.bin doesn't exist !")
             
         self.scan(matrix_file)
-        self.balancing(matrix_file)
+        # self.balancing(matrix_file)
         self.bwc(matrix_file)
         self.retrieve_solution(solution_file)
                 
