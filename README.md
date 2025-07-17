@@ -10,7 +10,10 @@ On veut utiliser l'agorithme de block Wiedemann pour trouver si la $r$-ième hom
 \bigwedge^{r+1} S_1 \xrightarrow{d} \bigwedge^r S_1 \bigotimes C \xrightarrow{d'} \bigwedge^{r-1} S_1 \bigotimes \mathbf F^n
 ```
 
-Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}(d)$ ayant pour base $\{ x_{l_1}\wedge \dots \wedge x_{l_r} \otimes c_l\ |\ l_1<\dots <l_r, l \leq l_r \}$ est nulle ou non. Pour cela on utilise block Wiedemann.
+Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}(d)$ ayant pour base $\{ x_{l_1}\wedge \dots \wedge x_{l_r} \otimes c_l\ |\ l_1<\dots <l_r, l \leq l_r \}$ est nulle ou non. Pour cela on utilise block Wiedemann, pour l'instant nous ne prennons en charge que GF(2)
+
+The matrix construction is done in python using numpy and numba in order to get good performances.  
+The block wiedemann part is done with `cado-nfs/linalg/bwc` highly efficient C/C++ module.
 
 ## Installation
 
@@ -48,12 +51,12 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
     conda activate syz
     ```
 
-**Get an overview**
+**Get an overview:**
 
 - To see the doc and get an overview of the project:
 
     ```python
-    load("syz.py)
+    load("syz.py")
     help(Instance)
     ```
 
@@ -68,11 +71,17 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 2. Create an instance:
 
     ```python
+    # Default idir = <dyztinguisher_dir>/instance  
+    # Default wdir = /tmp/wdir
+
     h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", idir="/nvme/user/instance", wdir="/nvme/user/wdir")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
     h48.set_code_matrix(G)
+
+    print(h48) # Get instance information
     ```
+
 
 3. Run the distinguisher with the conditioning of your choice:
    - `RAW`
@@ -91,7 +100,7 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 1. Create an instance and write it a bin:
 
     ```python
-    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
+    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
     h48.set_code_matrix(G)
@@ -109,12 +118,12 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 1. Create an instance and write/collect it:
 
     ```python
-    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", wdir="/nvme/user/wdir")
+    h48 = Instance("hamming", 15, 11, 8, "128", "64", "2x2", idir="/nvme/user/instance", wdir="/nvme/user/wdir")
     C = codes.HammingCode(GF(2),4)
     G = C.generator_matrix()
     h48.set_code_matrix(G)
     h48.construct_and_write_matrix(ConditioningType.RAWPAD)
-    #h48.construct_and_collect_matrix(ConditioningType.RAWPAD) # h48.S
+    #h48.construct_and_collect_matrix(ConditioningType.RAWPAD) # h48.S is a ndarray of uint32-ndarray
     ```
 
 2. Use the `sage_from_bin(path, name, nrows, ncols)` or `matrix_to_sage(matrix, nrows, cols)` to get a sage matrix:
@@ -133,21 +142,19 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 ## Block Wiedemann & Complexity
 
-**References for Block wiedemann**:
+**References for Block wiedemann:**
 
 - [Don Coppersmith, 1994](https://www.ams.org/journals/mcom/1994-62-205/S0025-5718-1994-1192970-7/S0025-5718-1994-1192970-7.pdf)
 
 - Emmanuel Thomé, 2022: [slide 1](https://homepages.loria.fr/EThome/teaching/2022-cse-291-14/slides/cse-291-14-lecture-14.pdf), [slide 2](https://members.loria.fr/EThome/teaching/2022-cse-291-14/slides/cse-291-14-lecture-15.pdf)  
 
-**Complexity**:
+**Complexity:**:
 
-- `krylov`: $n \times L = N(1 + n/m + o(1))$ matrix vector products
+- `krylov+mksol`: $(1 + n/m + w/n) \times N$ matrix-times-vector products, where w = 64 when working over GF(2) on a 64 bits processor
 
-- `krylov+mksol`: $(1 + n/m + r/n) \times N$, where r = 64 when working over GF(2) on a 64 bits processor
+- `lingen`: $(m+n) \times Nlog(N) \times (m + n + log(N))$
 
-- `lingen`: time=$(m+n) \times Nlog(N) \times (m + n + log(N))$
-
-**Probability of success**:
+**Probability of success:**
 
 - the matrix shouldn't have a non-zero eigenvalue of high multiplicity
 
@@ -189,9 +196,11 @@ Pour cela, on regarde si le noyau de $d'$ sur le supplémentaire de $\mathrm{im}
 
 - Multithreading when constructing the matrix
 - Improve theoretical matrix reduction before construction
-- Use `MPI` option of `cado-nfs` to run block Wiedemann on multiple computers
+- Use `MPI` option of `cado-nfs` to run block Wiedemann on multiple computers and **reach harder instances**:
+  - more cpu 
+  - amortize the high memory cost (`lingen`: fft &rarr; 5 times input size)
 - Refactor conditioning
-- Take advantage of the recursive structure
+- Take advantage of the recursive structure of the cohomology matrix
 - Black blox, don't construct the matrix
 
 ## Class info

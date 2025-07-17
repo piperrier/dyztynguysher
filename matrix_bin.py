@@ -44,7 +44,6 @@ def matrix_collect_queue(data_queue, data_container):
         print(f"Error in collecting thread: {e}")
 
 
-# FIXME: data_queue ending
 def matrix_to_bin_queue(path, name, data_queue):
     try:
         with open(path + "/" + name + ".bin", 'wb') as f:
@@ -86,7 +85,6 @@ def matrix_from_bin(path, name, nrows):
                 progress_percentage = float(irow) / float(nrows) * 100
                 print(f"Reading matrix: {progress_percentage:.2f}%", end="\r", flush=True)
 
-            # mmap.close()
             del mmap
             print("\n")
             return matrix
@@ -125,11 +123,9 @@ def sage_from_bin(path, matrix_name, nrows, ncols):
         print("No file found: " + filename + " doesn't exist !")
 
 
-# FIXME: assert 
-# TODO: memory map
+# TODO: refactor, memory map, adapt to more the 64 vectors ?
 def solution_from_bin(path, solution_name, nrows, ncols):
     print(f"{bcolors.BOLD}### Reading solutions {solution_name}{bcolors.ENDC}")
-    # W is the result file outputed by CADO NFS
     filename = path + "/" + solution_name + ".bin"
 
     try:

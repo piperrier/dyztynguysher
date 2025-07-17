@@ -18,13 +18,7 @@ from sage.plot.matrix_plot import matrix_plot
 from sage.functions.other import binomial
 from sage.matrix.constructor import matrix
 from sage.misc.functional import log
-#from sage.functions.other import ceil
-#from sage.rings.integer_ring import ZZ
 from sage.modules.free_module_element import vector
-#from sage.rings.finite_rings.finite_field_constructor import GF
-
-
-#from sage.all import *
 
 
 class Instance:
@@ -46,7 +40,7 @@ class Instance:
         code_matrix (sage.matrix): the generating matrix of the code
         nrows (int): the number of rows of the "raw" system matrix
         ncols (int): the number of columns of the "raw" system matrix
-        self.S (ndarray of ndarray of uint32): the sparse representation of the system matrix, only use this with light matrices (cf self.construct_and_collect_matrix)
+        self.S (ndarray of uint32-ndarray): the sparse representation of the system matrix, only use this with light matrices (cf self.construct_and_collect_matrix)
 
         * dir/wdir
         dir (str): absolute path to the directory where we construct the matrix and eventually put the kernel vectors
