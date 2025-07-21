@@ -1,7 +1,7 @@
 import os
 
 
-DEFAULT_DIR = os.path.abspath(os.curdir) + "/instance"
+DEFAULT_IDIR = os.path.abspath(os.curdir) + "/instance"
 DEFAULT_WDIR = "/tmp/wdir"
 
 
