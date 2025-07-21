@@ -6,7 +6,7 @@ import numpy as np
 import queue
 import threading
 
-from utils import DEFAULT_DIR, DEFAULT_WDIR, bcolors
+from utils import DEFAULT_IDIR, DEFAULT_WDIR, bcolors
 from goppa import *
 from matrix_bin import *
 from koszul import *
@@ -47,7 +47,7 @@ class Instance:
         wdir (str): absolute path to the directory where cado nfs work, should be fast in I/O, everything is deleted at the end of the running time 
 
     """
-    def __init__(self, name, n_code, k_code, r, m, n, threads, idir=DEFAULT_DIR, wdir=DEFAULT_WDIR):
+    def __init__(self, name, n_code, k_code, r, m, n, threads, idir=DEFAULT_IDIR, wdir=DEFAULT_WDIR):
         """Initializes the Instance with the given parameters.
 
         Args:
@@ -207,7 +207,7 @@ class Instance:
 
     def construct_and_write_matrix(self, conditioning=ConditioningType.RAW):
         """
-        Construct the whole matrix row by row and write in a file in the mean time through a buffer
+        Construct the whole matrix row by row and write in a file at the same time through a buffer
         Prefer this function for large matrices (3>GB)
         """
         if self.code_matrix == None:
