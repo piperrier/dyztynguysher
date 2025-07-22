@@ -33,7 +33,7 @@ The procedure is as follows:
 - First, we compute the martix of $d'$ on a basis of a complementary of $\mathrm{im}(d)$. The basis we take is:
 
 ```math
-  \left( x_{i_1}\wedge \dots \wedge x_{i_r} \otimes c_i\ |\ i_1<\dots <i_r, i \leq i_r \right)
+\left( x_{i_1}\wedge \dots \wedge x_{i_r} \otimes c_i|i_1 < \dots < i_r, i \leq i_r \right)
 ```
 
 - Then, we run block wiedemann algorithm, if we find a non trivial vector then $\beta_{r,r+1} > 0$ and if we don't find a vector then with high probability $\beta_{r,r+1} = 0$
