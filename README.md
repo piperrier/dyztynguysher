@@ -10,7 +10,7 @@ We are interested in computing wether a betti numbers of the linear strand ($j=i
 \beta_{i,j} = \dim_{\mathbb{K}} \text{Tor}_i(M, \mathbb{K})_j \stackrel{?}{=}0 \text{, for }M = \mathcal{C}^{\langle\cdot\rangle} = \bigoplus_{r \ge 0} \mathcal{C}^r
 ```
 
-To do so, we build the matrix of the $r$-th homology and use block wiedemann algorithm to check if $dim(Hom) = \beta_{r,r+1} >0$.
+To do so, we build the matrix of the $r$-th homology and use block wiedemann algorithm to check if $dim(Hom) = \beta_{r,r+1} >0$ :
 
 ```math
 \bigwedge^{r+1} \mathcal{S_1} \xrightarrow{d} \bigwedge^r \mathcal{S_1} \bigotimes \mathcal{C} \xrightarrow{d'} \bigwedge^{r-1} \mathcal{S_1} \bigotimes \mathcal{C}^{\langle 2 \rangle}
@@ -30,7 +30,11 @@ Where :
 
 The procedure is as follows:
 
-- First, we compute the martix of $d'$ on a basis of a complementary of $\mathrm{im}(d)$. The basis we take is $\left( x_{i_1}\wedge \dots \wedge x_{i_r} \otimes c_i\ |\ i_1<\dots <i_r, i \leq i_r \right)$  
+- First, we compute the martix of $d'$ on a basis of a complementary of $\mathrm{im}(d)$. The basis we take is:
+
+```math
+  \left( x_{i_1}\wedge \dots \wedge x_{i_r} \otimes c_i\ |\ i_1<\dots <i_r, i \leq i_r \right)
+```
 
 - Then, we run block wiedemann algorithm, if we find a non trivial vector then $\beta_{r,r+1} > 0$ and if we don't find a vector then with high probability $\beta_{r,r+1} = 0$
 
