@@ -4,13 +4,13 @@ This repository contains an experimental implementation of the syzygy distinguis
 
 ## Description
 
-We are interested in computing wether a betti numbers of the linear strand ($j=i+1$) is zero or not:
+We are interested in computing wether a Betti number of the linear strand ($j=i+1$) is zero or not:
 
 ```math
 \beta_{i,j} = \dim_{\mathbb{K}} \text{Tor}_i(M, \mathbb{K})_j \stackrel{?}{=}0 \text{, for }M = \mathcal{C}^{\langle\cdot\rangle} = \bigoplus_{r \ge 0} \mathcal{C}^r
 ```
 
-To do so, we build the matrix of the $r$-th homology and use block wiedemann algorithm to check if $dim(Hom) = \beta_{r,r+1} >0$ :
+To do so, we build a matrix whose kernel is the $r$-th Koszul cohomology space and use block Wiedemann algorithm to check if $dim(ker) = \beta_{r,r+1} >0$ :
 
 ```math
 \bigwedge^{r+1} \mathcal{S_1} \xrightarrow{d} \bigwedge^r \mathcal{S_1} \bigotimes \mathcal{C} \xrightarrow{d'} \bigwedge^{r-1} \mathcal{S_1} \bigotimes \mathcal{C}^{\langle 2 \rangle}
@@ -30,17 +30,17 @@ Where :
 
 The procedure is as follows:
 
-- First, we compute the martix of $d'$ on a basis of a complementary of $\mathrm{im}(d)$. The basis we take is:
+- First, we compute the matrix of $d'$ on a basis of a complement of $\mathrm{im}(d)$. The basis we take is:
 
 ```math
 \left( x_{i_1}\wedge \dots \wedge x_{i_r} \otimes c_i|i_1 < \dots < i_r, i \leq i_r \right)
 ```
 
-- Then, we run block wiedemann algorithm, if we find a non trivial vector then $\beta_{r,r+1} > 0$ and if we don't find a vector then with high probability $\beta_{r,r+1} = 0$
+- Then, we run block Wiedemann algorithm, if we find a non trivial vector then $\beta_{r,r+1} > 0$ and if we don't find a vector then with high probability $\beta_{r,r+1} = 0$
 
 - The matrix construction is done in python using `numpy` and `numba` in order to get good performances.  
 
-- The block wiedemann part is done in  C/C++ using `cado-nfs/linalg/bwc` highly efficient  module.
+- The block Wiedemann part is done in  C/C++ using `cado-nfs/linalg/bwc` highly efficient  module.
 
 ## Installation
 
