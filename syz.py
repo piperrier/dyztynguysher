@@ -23,7 +23,7 @@ from sage.modules.free_module_element import vector
 
 class Instance:
     """The class representing the instance we try to solve.
-    
+
     Attributes:
         * Code parameters
         name (str): the name of the code.
@@ -82,20 +82,20 @@ class Instance:
         # idir / wdir
         self.idir = idir + "/" + f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
         self.wdir = wdir # on some lame.enst.fr machine : "/nvme/pperrier-22/wdir"
-    
+
         if not os.path.exists(self.idir):
             os.makedirs(self.idir)
-        
+
         if not os.path.exists(self.wdir):
             os.makedirs(self.wdir)
-    
-    
+
+
     def __repr__(self):
         density = self.density()
 
-        row_red=self.nrows-self.r*binomial(self.k_code, self.r)
-        col_red=self.ncols - self.k_code*binomial(self.k_code, self.r-1)
-        space_red = (row_red * col_red * density + row_red)*4*10**-9        
+        row_red = self.nrows - self.r*binomial(self.k_code, self.r)
+        col_red = self.ncols - self.k_code*binomial(self.k_code, self.r-1)
+        space_red = (row_red * col_red * density + row_red)*4*10**-9
 
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
@@ -115,7 +115,7 @@ class Instance:
         print((f"matrix: space={(self.ncols * self.nrows * self.density() + self.nrows)*4*10**-9}Gb\n"
         f"krylov & mksol: matrix-times-vector products={(1 + n/m + 64/n)*self.ncols:.2E}\n"
         f"lingen: time={(m+n)*self.ncols*logcol*(m+n+logcol):.2E} space={(m+n)*self.ncols:.2E}"))
-        
+
 
 
     def pretty(self, conditioning=ConditioningType.RAW, dpi=200):
@@ -125,7 +125,7 @@ class Instance:
         """
         print(self)
         print("\n")
-        
+
         matrix_file, _ = self.get_files_names(conditioning)
 
         match conditioning:
@@ -140,9 +140,9 @@ class Instance:
 
             case ConditioningType.REDPAD:
                 nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
-            
+
         matrix = sage_from_bin(self.idir, matrix_file, nrows, ncols)
-        
+
         P = matrix_plot(matrix, marker=',')
         P.show(dpi=dpi, axes_pad=0,fontsize=3)
 
@@ -161,8 +161,8 @@ class Instance:
 
     def set_code_matrix(self, matrix: sage.matrix):
         self.code_matrix = matrix
-        
-    
+
+
     def construct_and_collect_matrix(self, conditioning=ConditioningType.RAW):
         """
         Construct the whole matrix and return a ndarray of ndarray. Doesn't write in a file. You can access the matrix with self.S
@@ -170,7 +170,7 @@ class Instance:
         """
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
-        
+
         data_queue = queue.Queue()
         data_container = []
 
@@ -186,14 +186,14 @@ class Instance:
             case ConditioningType.RED:
                 func = Red.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
-            
+
             case ConditioningType.REDPAD:
                 func = RedPad.format
                 _, ncols_red = RedPad.get_dim(self.nrows, self.n_code, self.k_code, self.r)
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*ncols_red))
 
-        compute_thread  = threading.Thread(target=func, args=arg)
-        collect_thread  = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
+        compute_thread = threading.Thread(target=func, args=arg)
+        collect_thread = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
 
         compute_thread.start()
         collect_thread.start()
@@ -212,7 +212,7 @@ class Instance:
         """
         if self.code_matrix == None:
             raise TypeError(f"No generating matrix specified for self\nDefine the generating matrix of the code with {bcolors.BOLD}self.set_code_matrix(G){bcolors.ENDC}")
-        
+
         matrix_name, _ = self.get_files_names(conditioning)
         data_queue = queue.Queue()
 
@@ -220,11 +220,11 @@ class Instance:
             case ConditioningType.RAW:
                 func = Raw.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
-            
+
             case ConditioningType.RAWPAD:
                 func = RawPad.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
-            
+
             case ConditioningType.RED:
                 func = Red.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
@@ -232,10 +232,10 @@ class Instance:
             case ConditioningType.REDPAD:
                 func = RedPad.format
                 arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
-                
 
-        compute_thread  = threading.Thread(target=func, args=arg)
-        write_thread  = threading.Thread(target=matrix_to_bin_queue, args=(self.idir, matrix_name, data_queue))
+
+        compute_thread = threading.Thread(target=func, args=arg)
+        write_thread = threading.Thread(target=matrix_to_bin_queue, args=(self.idir, matrix_name, data_queue))
 
         compute_thread.start()
         write_thread.start()
@@ -249,7 +249,7 @@ class Instance:
         """
         Size of the koszul cohomology matrices
         """
-        if r_min == r_max == None :
+        if r_min == r_max == None:
             r_min = self.r
             r_max = self.r+1
 
@@ -257,19 +257,19 @@ class Instance:
             nrows = binomial(self.k_code, r+1) * r + binomial(self.k_code, r) * r # dim of cokernel
             ncols = self.n_code * binomial(self.k_code, r-1) # dim of arrival space
             print(f"b{r}_{r+1}: {nrows} x {ncols}")
-            
+
 
     # WARNING! Not the exact density of the matrix representing the system but it should be close to the real one
     def density(self)->float:
         """
         Approximate density of the koszul cohomology matrix
-        """        
+        """
         square_code_matrix = matrix([self.code_matrix.row(i).pairwise_product(self.code_matrix.row(j)) for i in range(0,self.k_code) for j in range(i,self.k_code)])
         square_code_density = square_code_matrix.density()
         S_density = float(square_code_density) * self.n_code * self.r / self.ncols
         return S_density
 
-        
+
 #################################
 ### Verifications
 #################################
@@ -280,7 +280,7 @@ class Instance:
         When padding is added, check that at least one vector of the kernel is zero on the padding and non zero on the relevant elements.
         """
         print(f"{bcolors.BOLD}### Checking solution{bcolors.ENDC}")
-        
+
         _, solution_file = self.get_files_names(conditioning)
 
         match conditioning:
@@ -291,29 +291,33 @@ class Instance:
             case ConditioningType.REDPAD:
                 nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
                 padding = RedPad.get_padding(self.nrows, self.ncols, self.k_code, self.r)
-                
+
             case _:
                 print(f"No verification aivalable for the {conditioning} conditioning, maybe it's not needed or maybe you should add it")
                 return None
 
-        # ker is a sage matrix with 64 (for now) vectors in columns notation
-        ker = solution_from_bin(self.idir, solution_file, nrows, ncols)
+        try:
+            ker = solution_from_bin(self.idir, solution_file, nrows, ncols)
 
-        solution = False
+            if ker is None:
+                print(f"{bcolors.FAIL}Unable to read the solution file.{bcolors.ENDC}")
+                return None
 
-        relevant_base = vector([any(c) for c in ker[:-padding,:].columns()])
-        irrelevant_base = vector([1-any(c) for c in ker[-padding:,:].columns()])
+            solution = False
+            relevant_base = vector([any(c) for c in ker[:-padding,:].columns()])
+            irrelevant_base = vector([1-any(c) for c in ker[-padding:,:].columns()])
+            dim = sum(relevant_base.pairwise_product(irrelevant_base))
+            solution = any(relevant_base.pairwise_product(irrelevant_base))
 
-        dim = sum(relevant_base.pairwise_product(irrelevant_base))
-        solution = any(relevant_base.pairwise_product(irrelevant_base))
+            if solution:
+                print(f"{bcolors.OKGREEN}The solution is valid, found a vector space of dim {dim}{bcolors.ENDC}")
+            else:
+                print(f"{bcolors.FAIL}The solution is not valid, dim is {dim}{bcolors.ENDC}")
+            return ker
 
-        if solution: 
-            print(f"{bcolors.OKGREEN}The solution is valid, found a vector space of dim {dim}{bcolors.ENDC}")
-        else:
-            print(f"{bcolors.FAIL}The solution is not valid, dim is {dim}{bcolors.ENDC}")
-            
-        return ker
-        
+        except Exception as e:
+            print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
+            return None
 
 #################################
 ### Calls to CADO-NFS
@@ -356,8 +360,8 @@ class Instance:
         n=" + self.n + "                            \
         nullspace=left                              \
         matrix=" + self.idir +"/"+ matrix_file  +".bin               \
-        thr=" + self.thr, shell = True)
-        
+        thr=" + self.thr, shell=True)
+
         # balancing=$(find " + self.idir + " -name '"+ matrix_file +"."+ thr +".*.bin')",shell=True)
 
 
@@ -381,23 +385,22 @@ class Instance:
             3. bwc()
             4. retrieve_solution()
             5. 6. clear()
-            
         """
         print(f"{bcolors.BOLD}### Run{bcolors.ENDC}")
-        
+
         matrix_file, solution_file = self.get_files_names(conditioning)
 
         if not os.path.exists(self.idir + "/" + matrix_file + ".bin"):
             raise Exception(f"{self.idir}/{matrix_file}.bin doesn't exist !")
-            
+
         self.scan(matrix_file)
         # self.balancing(matrix_file)
         self.bwc(matrix_file)
         self.retrieve_solution(solution_file)
-                
+
         self.clear_idir()
         self.clear_wdir()
-        
+
 
 #################################
 ### Cleaning
@@ -406,13 +409,13 @@ class Instance:
 
     def clear_wdir(self):
         subprocess.run("rm -r " + self.wdir + "/*", shell=True)
-    
+
 
     def clear_idir(self):
         dot_bin = re.compile(r'^[^.]*\.bin$')
-        
+
         for filename in os.listdir(self.idir + "/"):
             file_path = os.path.join(self.idir + "/", filename)
 
-            if os.path.isfile(file_path) and not dot_bin.match(filename) :
+            if os.path.isfile(file_path) and not dot_bin.match(filename):
                 os.remove(file_path)
