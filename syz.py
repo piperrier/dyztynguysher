@@ -74,10 +74,9 @@ class Instance:
 
         # matrix system and sol
         self.code_matrix = None
-        self.nrows = binomial(self.k_code,self.r+1) * self.r + binomial(self.k_code,self.r) * self.r # dim of cokernel
-        self.ncols = self.n_code * binomial(self.k_code,self.r-1) # dim of arrival space
+        self.nrows = self.k_code * binomial(self.k_code,self.r) - binomial(self.k_code,self.r+1) # dim of cokernel
+        self.ncols = self.n_code * binomial(self.k_code, self.r-1) # dim of arrival space
         self.S = None #S is a ndarray of ndarray, best for speed and memory usage, for very large matrix we don't construct it, and prefer to write it in memory
-        # self.ker = None
 
         # idir / wdir
         self.idir = idir + "/" + f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}"
@@ -93,14 +92,10 @@ class Instance:
     def __repr__(self):
         density = self.density()
 
-        row_red = self.nrows - self.r*binomial(self.k_code, self.r)
-        col_red = self.ncols - self.k_code*binomial(self.k_code, self.r-1)
-        space_red = (row_red * col_red * density + row_red)*4*10**-9
-
         return f"{self.name}_{self.n_code}_{self.k_code}_b{self.r}_{self.r + 1}:\n\
         m={self.m} n={self.n}\n\
         thr={self.thr}\n\
-        nrows={self.nrows} ncols={self.ncols} row_red={self.r*binomial(self.k_code, self.r)} col_red={self.k_code*binomial(self.k_code, self.r-1)}\n\
+        nrows={self.nrows} ncols={self.ncols}\n\
         density={round(density*100,5)}% weight={self.ncols * self.nrows * density:.0f} space={(self.ncols * self.nrows * density + self.nrows)*4*10**-9:.3f}Gb spacered={space_red}\n\
         idir={self.idir} wdir={self.wdir}"
 
@@ -130,16 +125,16 @@ class Instance:
 
         match conditioning:
             case ConditioningType.RAW:
-                nrows, ncols = Raw.get_dim(self.nrows, self.ncols)
+                nrows, ncols, _ = Raw.get_dim(self.n_code, self.k_code, self.r)
 
             case ConditioningType.RAWPAD:
-                nrows, ncols = RawPad.get_dim(self.nrows, self.ncols)
+                nrows, ncols, _ = RawPad.get_dim(self.n_code, self.k_code, self.r)
 
             case ConditioningType.RED:
-                nrows, ncols = Red.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+                nrows, ncols, _ = Red.get_dim(self.n_code, self.k_code, self.r)
 
             case ConditioningType.REDPAD:
-                nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
+                nrows, ncols, _ = RedPad.get_dim(self.n_code, self.k_code, self.r)
 
         matrix = sage_from_bin(self.idir, matrix_file, nrows, ncols)
 
@@ -177,20 +172,20 @@ class Instance:
         match conditioning:
             case ConditioningType.RAW:
                 func = Raw.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), data_queue)
 
             case ConditioningType.RAWPAD:
                 func = RawPad.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), int(self.density()*self.ncols), data_queue)
 
             case ConditioningType.RED:
                 func = Red.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), data_queue)
 
             case ConditioningType.REDPAD:
                 func = RedPad.format
-                _, ncols_red = RedPad.get_dim(self.nrows, self.n_code, self.k_code, self.r)
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*ncols_red))
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), int(self.density()*self.ncols), data_queue)
+                
 
         compute_thread = threading.Thread(target=func, args=arg)
         collect_thread = threading.Thread(target=matrix_collect_queue, args=(data_queue, data_container))
@@ -219,19 +214,19 @@ class Instance:
         match conditioning:
             case ConditioningType.RAW:
                 func = Raw.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), data_queue)
 
             case ConditioningType.RAWPAD:
                 func = RawPad.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), int(self.density()*self.ncols), data_queue)
 
             case ConditioningType.RED:
                 func = Red.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue)
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), data_queue)
 
             case ConditioningType.REDPAD:
                 func = RedPad.format
-                arg = (int(self.nrows), int(self.ncols), np.array(self.code_matrix, dtype=int), int(self.r), data_queue, int(self.density()*self.ncols))
+                arg = (int(self.n_code), int(self.k_code), int(self.r), np.array(self.code_matrix, dtype=int), int(self.density()*self.ncols), data_queue)
 
 
         compute_thread = threading.Thread(target=func, args=arg)
@@ -285,12 +280,10 @@ class Instance:
 
         match conditioning:
             case ConditioningType.RAWPAD:
-                nrows, ncols = RawPad.get_dim(self.nrows, self.ncols)
-                padding = RawPad.get_padding(self.nrows, self.ncols)
+                nrows, ncols, padding = RawPad.get_dim(self.n_code, self.k_code, self.r)
 
             case ConditioningType.REDPAD:
-                nrows, ncols = RedPad.get_dim(self.nrows, self.ncols, self.k_code, self.r)
-                padding = RedPad.get_padding(self.nrows, self.ncols, self.k_code, self.r)
+                nrows, ncols, padding = RedPad.get_dim(self.n_code, self.k_code, self.r)
 
             case _:
                 print(f"No verification aivalable for the {conditioning} conditioning, maybe it's not needed or maybe you should add it")

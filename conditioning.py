@@ -16,13 +16,15 @@ class ConditioningType(Enum):
 
 
 ####################################
+### Abstract class
+####################################
 
 
 class Conditioning(ABC):
     @abstractmethod
-    def get_dim(nrows, ncols):
+    def get_dim(n, k, r):
         """
-        Size of the matrix outputed by format()
+        Size of the matrix outputed by format() and number of row padded
         """
         pass
 
@@ -34,127 +36,143 @@ class Conditioning(ABC):
         pass
 
 
-class Raw(Conditioning):
-    def get_dim(nrows, ncols):
-        return nrows, ncols
+####################################
+### Real conditioning
+####################################
 
-    def format(nrows, ncols, G, r, data_queue):
+
+class Raw(Conditioning):
+    def get_dim(n, k, r):
+        nrows = k * binomial(k, r) - binomial(k, r+1)
+        ncols = n * binomial(k, r-1)
+        padding = 0
+        return nrows, ncols, padding
+
+    def format(n, k, r, G, data_queue):
         print(f"{bcolors.BOLD}### Raw conditioning{bcolors.ENDC}")
-        k, n = G.shape
+
+        dim_coker = k * binomial(k, r) - binomial(k, r+1)
+
         try:
-            for i in range(nrows):
+            for i in range(dim_coker):
                 elem = index_to_base_coker(i, k, r)
                 row = diff_supp(elem, G, r)
                 data_queue.put(row)
                 
-                progress_percentage = round(float(i)/nrows * 100,2)
+                progress_percentage = round(float(i)/dim_coker * 100, 2)
                 print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
 
-            data_queue.put(None)  # Signal that computation is done
+            data_queue.put(None)
             print("")
 
         except Exception as e:
             print(f"Error in computation thread: {e}")
-            data_queue.put(None)  # Ensure the writing thread can exit
+            data_queue.put(None)
 
 
 class RawPad(Conditioning):
-    def get_dim(nrows, ncols):
-        if nrows > ncols:
-            raise Exception(f"Cannot add random rows to a matrix with more rows than columns, {nrows}>{ncols}")
-        return ncols, ncols
+    def get_dim(n, k, r):
+        nrows = k * binomial(k, r) - binomial(k, r+1)
+        ncols = n * binomial(k, r-1)
+        padding = ncols - nrows
+        return ncols, ncols, padding
 
 
-    def get_padding(nrows, ncols):
-        return ncols - nrows
-
-
-    def format(nrows, ncols, G, r, data_queue, weight):
+    def format(n, k, r, G, weight, data_queue):
         print(f"{bcolors.BOLD}### Raw Pad conditioning{bcolors.ENDC}")
-        k, n = G.shape
+
+        dim_coker = k * binomial(k, r) - binomial(k, r+1)
+        _, ncols, padding = RawPad.get_dim(n, k, r)
+
+
         try:
-            for i in range(nrows):
+            for i in range(dim_coker):
                 elem = index_to_base_coker(i, k, r)
                 row = diff_supp(elem, G, r)
                 data_queue.put(row)
                 
-                progress_percentage = round(float(i)/ncols * 100,2)
+                progress_percentage = round(float(i) / (dim_coker + padding) * 100, 2)
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
             
-            for i in range(ncols - nrows):
+            for i in range(padding):
                 row = random_row(ncols, weight)
                 data_queue.put(row)
                 
-                progress_percentage = round(float(nrows+i)/ncols * 100,2)
+                progress_percentage = round(float(dim_coker+i) / (dim_coker + padding) * 100, 2)
                 print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
             
-            data_queue.put(None)  # Signal that computation is done
+            data_queue.put(None)
             print("\n")
             
         except Exception as e:
             print(f"Error in computation thread: {e}")
-            data_queue.put(None)  # Ensure the writing thread can exit
+            data_queue.put(None)
 
 
 class Red(Conditioning):
-    def get_dim(nrows, ncols, k, r):
-        return (nrows - r * binomial(k, r), ncols - k * binomial(k, r-1))
+    def get_dim(n, k, r):
+        nrows = k * binomial(k, r) - binomial(k, r+1) - (r * binomial(k, r))
+        ncols = n * binomial(k, r-1) - k * binomial(k, r-1)
+        padding = 0
+        return (nrows, ncols, padding)
     
-    def format(nrows, ncols, G, r, data_queue):
+    
+    def format(n, k, r, G, data_queue):
         print(f"{bcolors.BOLD}### Reduction conditioning{bcolors.ENDC}")
-        k, n = G.shape
+        
+        dim_coker = k * binomial(k, r) - binomial(k, r+1)
+
         try:
-            for i in range(nrows):
+            for i in range(dim_coker):
                 elem = index_to_base_coker(i, k, r)
                 if elem[r] not in elem[0:r]:
                     row = diff_supp_red(elem, G, r)
                     data_queue.put(row)
                 
-                #progress_percentage = round(float(i)/ncols * 100,2)
-                #print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
+                progress_percentage = round(float(i) / dim_coker * 100, 2)
+                print(f"Matrix construction in progress: {progress_percentage:.2f}%", end="\r", flush=True)
             
-            data_queue.put(None)  # Signal that computation is done
-            #print("\n")
+            data_queue.put(None)
+            print("\n")
         
         except Exception as e:
             print(f"Error in computation thread: {e}")
-            data_queue.put(None)  # Ensure the writing thread can exit
+            data_queue.put(None)
 
 
 class RedPad(Conditioning):
-    def get_dim(nrows, ncols, k, r):
-        return (ncols - k * binomial(k, r-1), ncols - k * binomial(k, r-1))
+    def get_dim(n, k, r):
+        nrows = k * binomial(k, r) - binomial(k, r+1) - (r * binomial(k, r))
+        ncols = n * binomial(k, r-1) - k * binomial(k, r-1)
+        padding = ncols - nrows
+        return (ncols, ncols, padding)
 
 
-    def get_padding(nrows, ncols,k, r):
-        return (ncols - k * binomial(k, r-1)) - (nrows - r * binomial(k, r))
-
-
-    def format(nrows, ncols, G, r, data_queue, weight):
+    def format(n, k, r, G, weight, data_queue):
         print(f"{bcolors.BOLD}### Reduction Pad conditioning{bcolors.ENDC}")
-        k, n = G.shape
+        
+        dim_coker = k * binomial(k, r) - binomial(k, r+1)
+        _, ncols, padding = RedPad.get_dim(n, k, r)
+        
         try:
-            cpt = 0
-            for i in range(nrows):
+            for i in range(dim_coker):
                 elem = index_to_base_coker(i, k, r)
                 if elem[r] not in elem[0:r]:
                     row = diff_supp_red(elem, G, r)
                     data_queue.put(row)
-                    cpt +=1
                 
-                progress_percentage = round(float(cpt)/(ncols - k * binomial(k,r-1)) * 100,2)
+                progress_percentage = round(float(i) / (dim_coker + padding) * 100, 2)
                 print(f"Matrix construction in progress (image): {progress_percentage:.2f}%", end="\r", flush=True)
 
-            for i in range((ncols - k * binomial(k, r-1)) - (nrows - r * binomial(k, r))):
+            for i in range(padding):
                 row = random_row(ncols - k * binomial(k, r-1), weight)
                 data_queue.put(row)
-                cpt+=1
                 
-                progress_percentage = round(float(cpt)/(ncols - k * binomial(k,r-1)) * 100,2)
+                progress_percentage = round(float(dim_coker+i) / (dim_coker + padding) * 100, 2)
                 print(f"Matrix construction in progress (padding): {progress_percentage:.2f}%", end="\r", flush=True)
-            data_queue.put(None)  # Signal that computation is done
+            data_queue.put(None)
             print("\n")
             
         except Exception as e:
             print(f"Error in computation thread: {e}")
-            data_queue.put(None)  # Ensure the writing thread can exit
+            data_queue.put(None)
