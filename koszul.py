@@ -158,47 +158,6 @@ if __name__ == '__main__':
     import itertools
     from matrix_bin import *
 
-    ### base
-    """
-    k = 30
-    r = 5
-
-    kCr = [list(x) for x in itertools.combinations(range(k), r)]
-
-    coker = []
-    for i in kCr:
-        for alpha in range(i[-1]+1):
-            coker.append(i + [alpha])
-
-    test = [index_to_base_coker(i, k, r) for i in range(len(coker))]
-    print("base eq")
-    print(coker==test)
-    """
-
-    
-    ### randrow
-    rng = np.random.default_rng()
-    #time1 = timeit.timeit(lambda: random_row(rng, 31_200_526, 886), number = 1_000)
-    #print(time1)
-
-    time2 = timeit.timeit(lambda: random_row_2(31_200_526, 886), number = 1_000)
-    print(time2)
-
-    for i in range(10):
-        row = random_row_2(15,5)
-        print(row)
-    
-    #G = np.array([[1, 0, 0, 0, 0, 1, 1],
-    #             [0, 1, 0, 0, 1, 0, 1],
-    #             [0, 0, 1, 0, 1, 1, 0],
-    #             [0, 0, 0, 1, 1, 1, 1]], 
-    #             dtype=int)
-    #nrows = 20
-    #ncols = 28
-    #k = 4
-    #r = 2
-
-    
     #################################
     ### Homology functions (used for test)
     #################################
@@ -244,6 +203,17 @@ if __name__ == '__main__':
 
         return np.array(S_coker, dtype=np.ndarray)
 
+
+    G = np.array([[1, 0, 0, 0, 0, 1, 1],
+                 [0, 1, 0, 0, 1, 0, 1],
+                 [0, 0, 1, 0, 1, 1, 0],
+                 [0, 0, 0, 1, 1, 1, 1]], 
+                 dtype=int)
+    nrows = 20
+    ncols = 28
+    k = 4
+    r = 2
+
     """
     G = np.array(
         [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
@@ -257,14 +227,9 @@ if __name__ == '__main__':
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1]], dtype=int)
-    
-
     G[:,[10,11]] = G[:,[11,10]]
-    
-    
     nrows = 1760
     ncols = 4950
-    
     k = 11
     r = 8
     """
@@ -296,26 +261,19 @@ if __name__ == '__main__':
     r = 5
     """
 
-    """
-    #S = koszul_cohom(nrows, ncols, G, r)
+    
+    S = koszul_cohom(nrows, ncols, G, r)
     S_red = koszul_cohom_red(nrows, ncols, G, r)
-    print(max([max(i) for i in S_red]))
 
 
-    #test = matrix_to_sage(S, nrows,ncols)
+    test = matrix_to_sage(S, nrows,ncols)
     test_red = matrix_to_sage(S_red, nrows-r*math.comb(k,r),ncols-k*math.comb(k,r-1))
     
-    #print(test.dimensions())
-    #ker = test.kernel()
-    #print(ker.dimension())
-
-
-    print("")
-    
-    print(test_red.dimensions())
+    ker = test.kernel()
     ker_red = test_red.kernel()
-    print(ker_red.dimension())
+
+    print(ker.dimension() == ker_red.dimension())
 
     #time = timeit.timeit(lambda: koszul_cohom(0, nrows, G, r), number=1)
     #print(f"Time for Koszul: {time:.2f} sec")
-    """
+    
